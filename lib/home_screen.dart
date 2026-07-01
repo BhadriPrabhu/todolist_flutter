@@ -544,6 +544,7 @@ void _addTask(Task task) async {
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: _isDarkTheme ? ThemeConfig.darkCardColor : ThemeConfig.lightCardColor,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: FractionallySizedBox(
           widthFactor: 0.9,
           child: Padding(
