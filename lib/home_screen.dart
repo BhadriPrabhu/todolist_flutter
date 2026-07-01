@@ -276,7 +276,7 @@ void _addTask(Task task) async {
     setState(() {
       _tasks[index] = updatedTask;
       _cachedFilteredTasks = null; // Invalidate the cache immediately
-    });
+    }); 
     debugPrint(
         '[2025-05-30 10:51 IST] Toggled task: ${_tasks[index].id}, ${_tasks[index].title}, isComplete: ${_tasks[index].isComplete}');
     await _saveTasks();
