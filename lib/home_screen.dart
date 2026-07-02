@@ -1522,12 +1522,15 @@ void _addTask(Task task) async {
                 });
               },
               style: GoogleFonts.poppins(
-                color: Colors.black87,
+                color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
-              dropdownColor: Colors.white,
+              dropdownColor: Colors.grey[800],
               icon: const Icon(Icons.sort, color: Colors.white),
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              focusColor: Colors.transparent,
             ),
             const SizedBox(width: 8),
             Semantics(
