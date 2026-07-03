@@ -1546,6 +1546,7 @@ void _addTask(Task task) async {
                     _isDarkTheme = !_isDarkTheme;
                     debugPrint('Theme: ${_isDarkTheme ? 'Dark' : 'Light'}');
                   });
+                  showSnackBar('Theme changed to ${_isDarkTheme ? 'Dark' : 'Light'}');
                   _saveTasks();
                 },
               ),
