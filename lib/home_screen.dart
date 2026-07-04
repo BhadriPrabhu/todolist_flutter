@@ -446,28 +446,30 @@ class _HomeScreenState extends State<HomeScreen>
               matchesCategory;
         }).toList();
 
-    filtered.sort((a, b) {
-      if (_sortBy == 'Priority') {
-        const priorityOrder = {'high': 0, 'low': 1};
-        return (priorityOrder[a.priority] ?? 1).compareTo(
-          priorityOrder[b.priority] ?? 1,
-        );
-      } else if (_sortBy == 'DueDate') {
-        if (a.dueDate == null && b.dueDate == null) return 0;
-        if (a.dueDate == null) return 1;
-        if (b.dueDate == null) return -1;
-        return tz.TZDateTime.from(
-          DateTime.parse(a.dueDate!),
-          tz.getLocation('Asia/Kolkata'),
-        ).compareTo(
-          tz.TZDateTime.from(
-            DateTime.parse(b.dueDate!),
+    if (_sortBy != 'Custom') {
+      filtered.sort((a, b) {
+        if (_sortBy == 'Priority') {
+          const priorityOrder = {'high': 0, 'low': 1};
+          return (priorityOrder[a.priority] ?? 1).compareTo(
+            priorityOrder[b.priority] ?? 1,
+          );
+        } else if (_sortBy == 'DueDate') {
+          if (a.dueDate == null && b.dueDate == null) return 0;
+          if (a.dueDate == null) return 1;
+          if (b.dueDate == null) return -1;
+          return tz.TZDateTime.from(
+            DateTime.parse(a.dueDate!),
             tz.getLocation('Asia/Kolkata'),
-          ),
-        );
-      }
-      return 0;
-    });
+          ).compareTo(
+            tz.TZDateTime.from(
+              DateTime.parse(b.dueDate!),
+              tz.getLocation('Asia/Kolkata'),
+            ),
+          );
+        }
+        return 0;
+      });
+    }
 
     _cachedFilteredTasks = filtered;
     return filtered;
@@ -1877,7 +1879,9 @@ class _HomeScreenState extends State<HomeScreen>
               if (taskIndex != -1) {
                 _showTaskDetails(taskIndex);
                 debugPrint('Tapped: ${task.title}');
-                debugPrint('Order inside onReorder: ${_tasks.map((t) => t.title).toList()}');
+                debugPrint(
+                  'Order inside onReorder: ${_tasks.map((t) => t.title).toList()}',
+                );
               }
             },
           ),
@@ -2215,7 +2219,8 @@ class _HomeScreenState extends State<HomeScreen>
                               ],
                             ),
                           )
-                          : ReorderableListView.builder(
+                          : _sortBy == 'Custom'
+                          ? ReorderableListView.builder(
                             physics: const BouncingScrollPhysics(),
                             itemCount: filteredTasks.length,
                             itemBuilder:
@@ -2256,6 +2261,12 @@ class _HomeScreenState extends State<HomeScreen>
                                 Vibration.vibrate(duration: 100);
                               }
                             },
+                          )
+                          : ListView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: filteredTasks.length,
+                            itemBuilder:
+                                (context, index) => _buildTaskCard(index),
                           ),
                 ),
               ],
