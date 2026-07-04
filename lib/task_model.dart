@@ -13,6 +13,8 @@ class Task {
   final String? category;
   final bool isNotified;
 
+  var alarm;
+
   Task({
     required this.id,
     required this.title,
@@ -24,7 +26,7 @@ class Task {
     this.createdDate,
     this.dueDate,
     this.category,
-    this.isNotified = false, // Default to false
+    this.isNotified = false, required alarm, // Default to false
   });
 
   Task copyWith({
@@ -39,6 +41,7 @@ class Task {
     String? dueDate,
     String? category,
     bool? isNotified,
+    bool? alarm,
   }) {
     return Task(
       id: id ?? this.id,
@@ -52,6 +55,7 @@ class Task {
       dueDate: dueDate ?? this.dueDate,
       category: category ?? this.category,
       isNotified: isNotified ?? this.isNotified,
+      alarm: alarm ?? this.alarm
     );
   }
 
@@ -68,6 +72,7 @@ class Task {
       'dueDate': dueDate,
       'category': category,
       'isNotified': isNotified,
+      'alarm': alarm,
     };
   }
 
@@ -84,6 +89,7 @@ class Task {
       dueDate: map['dueDate'],
       category: map['category'],
       isNotified: map['isNotified'] ?? false, // Handle legacy tasks without this field
+      alarm: map['alarm'] ?? false, // Handle legacy tasks without this field
     );
   }
 
