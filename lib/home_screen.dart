@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen>
   String _filterCompletion = 'All';
   String _filterPriority = 'All';
   String _filterCategory = 'All';
-  String _sortBy = 'DueDate';
+  String _sortBy = 'Custom';
   String _searchQuery = '';
   bool _isDarkTheme = false;
   bool _showCelebration = false;
@@ -1988,6 +1988,7 @@ class _HomeScreenState extends State<HomeScreen>
             DropdownButton<String>(
               value: _sortBy,
               items: const [
+                DropdownMenuItem(value: 'Custom', child: Text('Custom')),
                 DropdownMenuItem(value: 'DueDate', child: Text('Due Date')),
                 DropdownMenuItem(value: 'Priority', child: Text('Priority')),
               ],
