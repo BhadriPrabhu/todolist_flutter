@@ -793,6 +793,7 @@ class _HomeScreenState extends State<HomeScreen>
       'category': null as String?,
       'dueDate': null as tz.TZDateTime?,
       'isValid': true,
+      'alarm': false,
     };
 
     showGeneralDialog(

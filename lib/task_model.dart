@@ -12,8 +12,7 @@ class Task {
   final String? dueDate;
   final String? category;
   final bool isNotified;
-
-  var alarm;
+  final bool alarm;
 
   Task({
     required this.id,
@@ -26,7 +25,8 @@ class Task {
     this.createdDate,
     this.dueDate,
     this.category,
-    this.isNotified = false, required alarm, // Default to false
+    this.isNotified = false,
+    this.alarm = false,
   });
 
   Task copyWith({
