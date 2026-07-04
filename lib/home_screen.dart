@@ -453,6 +453,7 @@ class _HomeScreenState extends State<HomeScreen>
           priorityOrder[b.priority] ?? 1,
         );
       } else if (_sortBy == 'DueDate') {
+        if (a.dueDate == null && b.dueDate == null) return 0;
         if (a.dueDate == null) return 1;
         if (b.dueDate == null) return -1;
         return tz.TZDateTime.from(
@@ -1876,6 +1877,7 @@ class _HomeScreenState extends State<HomeScreen>
               if (taskIndex != -1) {
                 _showTaskDetails(taskIndex);
                 debugPrint('Tapped: ${task.title}');
+                debugPrint('Order inside onReorder: ${_tasks.map((t) => t.title).toList()}');
               }
             },
           ),
@@ -2220,21 +2222,32 @@ class _HomeScreenState extends State<HomeScreen>
                             onReorder: (oldIndex, newIndex) async {
                               setState(() {
                                 if (newIndex > oldIndex) newIndex--;
-                                final task = filteredTasks.removeAt(oldIndex);
-                                filteredTasks.insert(newIndex, task);
-                                final reorderedTasks = <Task>[];
-                                final filteredIds =
-                                    filteredTasks.map((t) => t.id).toList();
-                                reorderedTasks.addAll(filteredTasks);
-                                reorderedTasks.addAll(
-                                  _tasks.where(
-                                    (t) => !filteredIds.contains(t.id),
-                                  ),
+                                final taskToMove = filteredTasks.removeAt(
+                                  oldIndex,
                                 );
-                                _tasks = reorderedTasks;
+                                filteredTasks.insert(newIndex, taskToMove);
+                                _tasks.removeWhere(
+                                  (t) => t.id == taskToMove.id,
+                                );
+
+                                if (newIndex == filteredTasks.length - 1) {
+                                  _tasks.add(taskToMove);
+                                } else {
+                                  final taskAfter = filteredTasks[newIndex + 1];
+                                  final insertIndex = _tasks.indexWhere(
+                                    (t) => t.id == taskAfter.id,
+                                  );
+
+                                  if (insertIndex != -1) {
+                                    _tasks.insert(insertIndex, taskToMove);
+                                  } else {
+                                    _tasks.add(taskToMove);
+                                  }
+                                }
+
                                 _cachedFilteredTasks = null;
                                 debugPrint(
-                                  'Reordered task: ${task.title} from $oldIndex to $newIndex',
+                                  'Reordered task: ${taskToMove.title} from $oldIndex to $newIndex',
                                 );
                               });
                               await _saveTasks();
