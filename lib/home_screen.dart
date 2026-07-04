@@ -1494,6 +1494,18 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           const SizedBox(height: 6),
           Text(
+            'Alarm: ${task.alarm == true ? 'Enabled' : 'Disabled'}',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color:
+                  _isDarkTheme
+                      ? ThemeConfig.secondaryTextColor
+                      : Colors.black54,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
             'Category: ${task.category ?? 'None'}',
             style: GoogleFonts.poppins(
               fontSize: 14,
