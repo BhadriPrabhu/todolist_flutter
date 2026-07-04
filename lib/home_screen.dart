@@ -880,8 +880,8 @@ class _HomeScreenState extends State<HomeScreen>
             label: 'Select Due Date and Time',
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 8,
+                horizontal: 4,
+                vertical: 0,
               ),
               title: Text(
                 dialogState['dueDate'] != null
@@ -1196,8 +1196,8 @@ class _HomeScreenState extends State<HomeScreen>
             label: 'Select Due Date and Time',
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 8,
+                horizontal: 4,
+                vertical: 0,
               ),
               title: Text(
                 dialogState['dueDate'] != null
