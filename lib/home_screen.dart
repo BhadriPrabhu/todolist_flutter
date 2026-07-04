@@ -13,7 +13,6 @@ import 'package:timezone/timezone.dart' as tz;
 import 'task_model.dart';
 import 'notification_service.dart';
 
-
 extension StringExtension on String {
   String capitalize() {
     return isEmpty ? this : this[0].toUpperCase() + substring(1).toLowerCase();
@@ -47,7 +46,8 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   // final NotificationService _notificationService = NotificationService();
   NotificationService _notificationService = NotificationService();
   List<Task> _tasks = [];
@@ -65,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Timer? _overdueTimer;
   final List<TextEditingController> _controllers = [];
 
-@override
+  @override
   void initState() {
     _notificationService.initialize().then((_) async {
       if (!await _notificationService.requestPermissions()) {
@@ -75,7 +75,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         await _loadTasks();
       }
     });
-    _lottieController = AnimationController(vsync: this, duration: const Duration(seconds: 3));
+    _lottieController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    );
     _overdueTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
         setState(() {
@@ -101,59 +104,76 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _loadTasks() async {
-  setState(() => _isLoading = true);
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _isDarkTheme = prefs.getBool('isDarkTheme') ?? false;
-      final taskList = prefs.getStringList('tasks') ?? [];
-      _tasks = taskList.map((json) {
-        try {
-          return Task.fromJson(json);
-        } catch (e) {
-          debugPrint('[2025-05-30 01:22 IST] Error parsing task JSON: $e');
-          return null;
-        }
-      }).where((task) => task != null).cast<Task>().toList();
-      for (var i = 0; i < _tasks.length; i++) {
-        var task = _tasks[i];
-        if (!task.isComplete && task.dueDate != null) {
-          try {
-            final dueDateUtc = DateTime.parse(task.dueDate!);
-            final dueDateIst = tz.TZDateTime.from(dueDateUtc, tz.getLocation('Asia/Kolkata'));
-            final now = tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'));
-            final gracePeriod = now.subtract(const Duration(minutes: 1));
-            debugPrint(
-                '[2025-05-30 01:22 IST] Checking task ${task.id}: due $dueDateIst, now $now, isAfter: ${dueDateIst.isAfter(gracePeriod)}');
-            if (dueDateIst.isAfter(gracePeriod)) {
-              _notificationService.scheduleNotification(task);
+    setState(() => _isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _isDarkTheme = prefs.getBool('isDarkTheme') ?? false;
+        final taskList = prefs.getStringList('tasks') ?? [];
+        _tasks =
+            taskList
+                .map((json) {
+                  try {
+                    return Task.fromJson(json);
+                  } catch (e) {
+                    debugPrint(
+                      '[2025-05-30 01:22 IST] Error parsing task JSON: $e',
+                    );
+                    return null;
+                  }
+                })
+                .where((task) => task != null)
+                .cast<Task>()
+                .toList();
+        for (var i = 0; i < _tasks.length; i++) {
+          var task = _tasks[i];
+          if (!task.isComplete && task.dueDate != null) {
+            try {
+              final dueDateUtc = DateTime.parse(task.dueDate!);
+              final dueDateIst = tz.TZDateTime.from(
+                dueDateUtc,
+                tz.getLocation('Asia/Kolkata'),
+              );
+              final now = tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'));
+              final gracePeriod = now.subtract(const Duration(minutes: 1));
               debugPrint(
-                  '[2025-05-30 01:22 IST] Scheduled notification for task: ${task.id}, ${task.title}, due: $dueDateIst (UTC: ${task.dueDate})');
-            } else if (!task.isNotified) { // Check if notification was already sent
+                '[2025-05-30 01:22 IST] Checking task ${task.id}: due $dueDateIst, now $now, isAfter: ${dueDateIst.isAfter(gracePeriod)}',
+              );
+              if (dueDateIst.isAfter(gracePeriod)) {
+                _notificationService.scheduleNotification(task);
+                debugPrint(
+                  '[2025-05-30 01:22 IST] Scheduled notification for task: ${task.id}, ${task.title}, due: $dueDateIst (UTC: ${task.dueDate})',
+                );
+              } else if (!task.isNotified) {
+                // Check if notification was already sent
+                debugPrint(
+                  '[2025-05-30 01:22 IST] Task ${task.id} is overdue: due $dueDateIst, now $now',
+                );
+                _notificationService.scheduleOverdueNotification(task);
+                // Update task to mark as notified
+                _tasks[i] = task.copyWith(isNotified: true);
+                _saveTasks(); // Save updated task list
+              }
+            } catch (e) {
               debugPrint(
-                  '[2025-05-30 01:22 IST] Task ${task.id} is overdue: due $dueDateIst, now $now');
-              _notificationService.scheduleOverdueNotification(task);
-              // Update task to mark as notified
-              _tasks[i] = task.copyWith(isNotified: true);
-              _saveTasks(); // Save updated task list
+                '[2025-05-30 01:22 IST] Failed to schedule notification for task ID: ${task.id}, error: $e',
+              );
+              showSnackBar(
+                'Failed to schedule notification for "${task.title}"',
+              );
             }
-          } catch (e) {
-            debugPrint(
-                '[2025-05-30 01:22 IST] Failed to schedule notification for task ID: ${task.id}, error: $e');
-            showSnackBar('Failed to schedule notification for "${task.title}"');
           }
         }
-      }
-      _cachedFilteredTasks = null;
-      debugPrint('[2025-05-30 01:22 IST] Loaded ${_tasks.length} tasks');
-    });
-  } catch (e) {
-    debugPrint('[2025-05-30 01:22 IST] Error loading tasks: $e');
-    showSnackBar('Failed to load tasks');
-  } finally {
-    setState(() => _isLoading = false);
+        _cachedFilteredTasks = null;
+        debugPrint('[2025-05-30 01:22 IST] Loaded ${_tasks.length} tasks');
+      });
+    } catch (e) {
+      debugPrint('[2025-05-30 01:22 IST] Error loading tasks: $e');
+      showSnackBar('Failed to load tasks');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
-}
 
   Future<void> _saveTasks() async {
     try {
@@ -183,59 +203,71 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-void _addTask(Task task) async {
-  setState(() => _isLoading = true);
-  try {
-    setState(() {
-      _tasks.add(task);
-      _cachedFilteredTasks = null;
-    });
-    debugPrint('[2025-05-30 02:10 IST] Added task: ${task.id}, ${task.title}, due: ${task.dueDate}');
-    await Future.wait([
-      _saveTasks(),
-      _notificationService.scheduleNotification(task).catchError((e) {
-        debugPrint('[2025-05-30 02:10 IST] Failed to schedule notification for task ID: ${task.id}, error: $e');
-        throw e;
-      }),
-    ]);
-    showSnackBar('Task "${task.title}" added');
-    if (await Vibration.hasVibrator() ?? false) {
-      Vibration.vibrate(duration: 100);
+  void _addTask(Task task) async {
+    setState(() => _isLoading = true);
+    try {
+      setState(() {
+        _tasks.add(task);
+        _cachedFilteredTasks = null;
+      });
+      debugPrint(
+        '[2025-05-30 02:10 IST] Added task: ${task.id}, ${task.title}, due: ${task.dueDate}',
+      );
+      await Future.wait([
+        _saveTasks(),
+        _notificationService.scheduleNotification(task).catchError((e) {
+          debugPrint(
+            '[2025-05-30 02:10 IST] Failed to schedule notification for task ID: ${task.id}, error: $e',
+          );
+          throw e;
+        }),
+      ]);
+      showSnackBar('Task "${task.title}" added');
+      if (await Vibration.hasVibrator() ?? false) {
+        Vibration.vibrate(duration: 100);
+      }
+    } catch (e) {
+      debugPrint(
+        '[2025-05-30 02:10 IST] Error adding task or scheduling notification: $e',
+      );
+      showSnackBar('Failed to add task "${task.title}"');
+    } finally {
+      setState(() => _isLoading = false);
     }
-  } catch (e) {
-    debugPrint('[2025-05-30 02:10 IST] Error adding task or scheduling notification: $e');
-    showSnackBar('Failed to add task "${task.title}"');
-  } finally {
-    setState(() => _isLoading = false);
   }
-}
 
   void _editTask(int index, Task task) async {
-  setState(() => _isLoading = true);
-  try {
-    setState(() {
-      _tasks[index] = task;
-      _cachedFilteredTasks = null; // Invalidate the cache immediately
-    });
-    debugPrint('[2025-05-30 02:13 IST] Edited task: ${task.id}, ${task.title}, due: ${task.dueDate}');
-    await Future.wait([
-      _saveTasks(),
-      _notificationService.scheduleNotification(task).catchError((e) {
-        debugPrint('[2025-05-30 02:13 IST] Failed to schedule notification for task ID: ${task.id}, error: $e');
-        throw e;
-      }),
-    ]);
-    showSnackBar('Task "${task.title}" updated');
-    if (await Vibration.hasVibrator() ?? false) {
-      Vibration.vibrate(duration: 100);
+    setState(() => _isLoading = true);
+    try {
+      setState(() {
+        _tasks[index] = task;
+        _cachedFilteredTasks = null; // Invalidate the cache immediately
+      });
+      debugPrint(
+        '[2025-05-30 02:13 IST] Edited task: ${task.id}, ${task.title}, due: ${task.dueDate}',
+      );
+      await Future.wait([
+        _saveTasks(),
+        _notificationService.scheduleNotification(task).catchError((e) {
+          debugPrint(
+            '[2025-05-30 02:13 IST] Failed to schedule notification for task ID: ${task.id}, error: $e',
+          );
+          throw e;
+        }),
+      ]);
+      showSnackBar('Task "${task.title}" updated');
+      if (await Vibration.hasVibrator() ?? false) {
+        Vibration.vibrate(duration: 100);
+      }
+    } catch (e) {
+      debugPrint(
+        '[2025-05-30 02:13 IST] Error editing task or scheduling notification: $e',
+      );
+      showSnackBar('Failed to update task "${task.title}"');
+    } finally {
+      setState(() => _isLoading = false);
     }
-  } catch (e) {
-    debugPrint('[2025-05-30 02:13 IST] Error editing task or scheduling notification: $e');
-    showSnackBar('Failed to update task "${task.title}"');
-  } finally {
-    setState(() => _isLoading = false);
   }
-}
 
   void _deleteTask(int index) async {
     final task = _tasks[index];
@@ -245,11 +277,15 @@ void _addTask(Task task) async {
         _tasks.removeAt(index);
         _cachedFilteredTasks = null;
       });
-      debugPrint('[2025-05-30 11:02 IST] Deleted task: ${task.id}, ${task.title}, due: ${task.dueDate}');
+      debugPrint(
+        '[2025-05-30 11:02 IST] Deleted task: ${task.id}, ${task.title}, due: ${task.dueDate}',
+      );
       await Future.wait([
         _saveTasks(),
         _notificationService.cancelNotification(task.id).catchError((e) {
-          debugPrint('[2025-05-30 11:02 IST] Failed to cancel notification for task ID: ${task.id}, error: $e');
+          debugPrint(
+            '[2025-05-30 11:02 IST] Failed to cancel notification for task ID: ${task.id}, error: $e',
+          );
           throw e;
         }),
       ]);
@@ -258,7 +294,9 @@ void _addTask(Task task) async {
         Vibration.vibrate(duration: 100);
       }
     } catch (e) {
-      debugPrint('[2025-05-30 11:02 IST] Error deleting task or cancelling notification: $e');
+      debugPrint(
+        '[2025-05-30 11:02 IST] Error deleting task or cancelling notification: $e',
+      );
       showSnackBar('Failed to delete task "${task.title}"');
     } finally {
       setState(() => _isLoading = false);
@@ -266,31 +304,39 @@ void _addTask(Task task) async {
   }
 
   void _toggleTaskCompletion(int index) async {
-  setState(() => _isLoading = true);
-  final task = _tasks[index];
-  try {
-    final updatedTask = task.copyWith(
-      isComplete: !task.isComplete,
-      isNotified: false, // Reset isNotified to allow rescheduling overdue notifications
-    );
-    setState(() {
-      _tasks[index] = updatedTask;
-      _cachedFilteredTasks = null; // Invalidate the cache immediately
-    }); 
-    debugPrint(
-        '[2025-05-30 10:51 IST] Toggled task: ${_tasks[index].id}, ${_tasks[index].title}, isComplete: ${_tasks[index].isComplete}');
-    await _saveTasks();
-    if (updatedTask.isComplete) {
-      debugPrint('[2025-05-30 10:51 IST] Cancelled notification for task ID: ${task.id}');
-      await _notificationService.cancelNotification(task.id.hashCode.toString());
-      if (_tasks.isNotEmpty && _tasks.every((t) => t.isComplete)) {
-        setState(() {
-          _showCelebration = true;
-          debugPrint('[2025-05-30 10:51 IST] All tasks completed, showing celebration');
-        });
-        _lottieController
-          ..reset()
-          ..forward().whenComplete(() {
+    setState(() => _isLoading = true);
+    final task = _tasks[index];
+    try {
+      final updatedTask = task.copyWith(
+        isComplete: !task.isComplete,
+        isNotified:
+            false, // Reset isNotified to allow rescheduling overdue notifications
+      );
+      setState(() {
+        _tasks[index] = updatedTask;
+        _cachedFilteredTasks = null; // Invalidate the cache immediately
+      });
+      debugPrint(
+        '[2025-05-30 10:51 IST] Toggled task: ${_tasks[index].id}, ${_tasks[index].title}, isComplete: ${_tasks[index].isComplete}',
+      );
+      await _saveTasks();
+      if (updatedTask.isComplete) {
+        debugPrint(
+          '[2025-05-30 10:51 IST] Cancelled notification for task ID: ${task.id}',
+        );
+        await _notificationService.cancelNotification(
+          task.id.hashCode.toString(),
+        );
+        if (_tasks.isNotEmpty && _tasks.every((t) => t.isComplete)) {
+          setState(() {
+            _showCelebration = true;
+            debugPrint(
+              '[2025-05-30 10:51 IST] All tasks completed, showing celebration',
+            );
+          });
+          _lottieController
+            ..reset()
+            ..forward().whenComplete(() {
               if (mounted) {
                 setState(() {
                   _showCelebration = false;
@@ -298,39 +344,53 @@ void _addTask(Task task) async {
                 });
               }
             });
-      }
-    } else if (updatedTask.dueDate != null) {
-      try {
-        final dueDateUtc = DateTime.parse(updatedTask.dueDate!);
-        final dueDateIst = tz.TZDateTime.from(dueDateUtc, tz.getLocation('Asia/Kolkata'));
-        final now = tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'));
-        debugPrint(
-            '[2025-05-30 10:51 IST] Task ID: ${task.id}, raw dueDate: ${task.dueDate}, dueDate IST: $dueDateIst, now: $now, formatted: ${DateFormat.yMMMEd().add_jm().format(dueDateIst)}');
-        if (dueDateIst.isAfter(now)) {
-          debugPrint(
-              '[2025-05-30 10:51 IST] Scheduled notification for task ID: ${task.id}, due: $dueDateIst');
-          await _notificationService.scheduleNotification(updatedTask);
-        } else {
-          debugPrint(
-              '[2025-05-30 10:51 IST] Not scheduling notification for task ID: ${task.id}, dueDate is not in the future');
         }
-      } catch (e) {
-        debugPrint('[2025-05-30 10:51 IST] Error handling notification for task ID: ${task.id}, error: $e');
-        showSnackBar('Failed to schedule notification for "${updatedTask.title}"');
+      } else if (updatedTask.dueDate != null) {
+        try {
+          final dueDateUtc = DateTime.parse(updatedTask.dueDate!);
+          final dueDateIst = tz.TZDateTime.from(
+            dueDateUtc,
+            tz.getLocation('Asia/Kolkata'),
+          );
+          final now = tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'));
+          debugPrint(
+            '[2025-05-30 10:51 IST] Task ID: ${task.id}, raw dueDate: ${task.dueDate}, dueDate IST: $dueDateIst, now: $now, formatted: ${DateFormat.yMMMEd().add_jm().format(dueDateIst)}',
+          );
+          if (dueDateIst.isAfter(now)) {
+            debugPrint(
+              '[2025-05-30 10:51 IST] Scheduled notification for task ID: ${task.id}, due: $dueDateIst',
+            );
+            await _notificationService.scheduleNotification(updatedTask);
+          } else {
+            debugPrint(
+              '[2025-05-30 10:51 IST] Not scheduling notification for task ID: ${task.id}, dueDate is not in the future',
+            );
+          }
+        } catch (e) {
+          debugPrint(
+            '[2025-05-30 10:51 IST] Error handling notification for task ID: ${task.id}, error: $e',
+          );
+          showSnackBar(
+            'Failed to schedule notification for "${updatedTask.title}"',
+          );
+        }
       }
+    } catch (e) {
+      debugPrint('[2025-05-30 10:51 IST] Error toggling task completion: $e');
+      showSnackBar('Failed to update task "${task.title}"');
+    } finally {
+      setState(() => _isLoading = false);
     }
-  } catch (e) {
-    debugPrint('[2025-05-30 10:51 IST] Error toggling task completion: $e');
-    showSnackBar('Failed to update task "${task.title}"');
-  } finally {
-    setState(() => _isLoading = false);
   }
-}
 
   void _shareTask(Task task) async {
     final dueDate = task.dueDate != null ? DateTime.parse(task.dueDate!) : null;
-    final dueDateIst = dueDate != null ? tz.TZDateTime.from(dueDate, tz.getLocation('Asia/Kolkata')) : null;
-    final message = '${task.title}\n${task.description}'
+    final dueDateIst =
+        dueDate != null
+            ? tz.TZDateTime.from(dueDate, tz.getLocation('Asia/Kolkata'))
+            : null;
+    final message =
+        '${task.title}\n${task.description}'
         '${task.notes != null && task.notes!.isNotEmpty ? '\nNotes: ${task.notes}' : ''}'
         '${dueDateIst != null ? '\nDue: ${DateFormat.yMMMMd().add_jm().format(dueDateIst)}' : ''}'
         '${task.category != null ? '\nCategory: ${task.category}' : ''}';
@@ -347,32 +407,63 @@ void _addTask(Task task) async {
       return _cachedFilteredTasks!;
     }
 
-    var filtered = _tasks.where((task) {
-      final matchesSearch = task.title.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesCompletion = _filterCompletion == 'All' ||
-          (_filterCompletion == 'Completed' && task.isComplete) ||
-          (_filterCompletion == 'Pending' && !task.isComplete) ||
-          (_filterCompletion == 'Overdue' &&
-              task.dueDate != null &&
-              tz.TZDateTime.from(DateTime.parse(task.dueDate!), tz.getLocation('Asia/Kolkata')).isBefore(tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'))) &&
-              !task.isComplete) ||
-          (_filterCompletion == 'Due Today' &&
-              task.dueDate != null &&
-              tz.TZDateTime.from(DateTime.parse(task.dueDate!), tz.getLocation('Asia/Kolkata')).day == tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')).day);
-      final matchesPriority = _filterPriority == 'All' || (task.priority?.toLowerCase() ?? '') == _filterPriority.toLowerCase();
-      final matchesCategory = _filterCategory == 'All' ? true : task.category == _filterCategory;
-      return matchesSearch && matchesCompletion && matchesPriority && matchesCategory;
-    }).toList();
+    var filtered =
+        _tasks.where((task) {
+          final matchesSearch = task.title.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          );
+          final matchesCompletion =
+              _filterCompletion == 'All' ||
+              (_filterCompletion == 'Completed' && task.isComplete) ||
+              (_filterCompletion == 'Pending' && !task.isComplete) ||
+              (_filterCompletion == 'Overdue' &&
+                  task.dueDate != null &&
+                  tz.TZDateTime.from(
+                    DateTime.parse(task.dueDate!),
+                    tz.getLocation('Asia/Kolkata'),
+                  ).isBefore(
+                    tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
+                  ) &&
+                  !task.isComplete) ||
+              (_filterCompletion == 'Due Today' &&
+                  task.dueDate != null &&
+                  tz.TZDateTime.from(
+                        DateTime.parse(task.dueDate!),
+                        tz.getLocation('Asia/Kolkata'),
+                      ).day ==
+                      tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')).day);
+          final matchesPriority =
+              _filterPriority == 'All' ||
+              (task.priority?.toLowerCase() ?? '') ==
+                  _filterPriority.toLowerCase();
+          final matchesCategory =
+              _filterCategory == 'All'
+                  ? true
+                  : task.category == _filterCategory;
+          return matchesSearch &&
+              matchesCompletion &&
+              matchesPriority &&
+              matchesCategory;
+        }).toList();
 
     filtered.sort((a, b) {
       if (_sortBy == 'Priority') {
         const priorityOrder = {'high': 0, 'low': 1};
-        return (priorityOrder[a.priority] ?? 1).compareTo(priorityOrder[b.priority] ?? 1);
+        return (priorityOrder[a.priority] ?? 1).compareTo(
+          priorityOrder[b.priority] ?? 1,
+        );
       } else if (_sortBy == 'DueDate') {
         if (a.dueDate == null) return 1;
         if (b.dueDate == null) return -1;
-        return tz.TZDateTime.from(DateTime.parse(a.dueDate!), tz.getLocation('Asia/Kolkata'))
-            .compareTo(tz.TZDateTime.from(DateTime.parse(b.dueDate!), tz.getLocation('Asia/Kolkata')));
+        return tz.TZDateTime.from(
+          DateTime.parse(a.dueDate!),
+          tz.getLocation('Asia/Kolkata'),
+        ).compareTo(
+          tz.TZDateTime.from(
+            DateTime.parse(b.dueDate!),
+            tz.getLocation('Asia/Kolkata'),
+          ),
+        );
       }
       return 0;
     });
@@ -391,7 +482,8 @@ void _addTask(Task task) async {
     bool isRequired = false,
     bool isValid = true,
   }) {
-    final controller = initialValue != null ? TextEditingController(text: initialValue) : null;
+    final controller =
+        initialValue != null ? TextEditingController(text: initialValue) : null;
     if (controller != null) {
       _controllers.add(controller);
     }
@@ -401,27 +493,46 @@ void _addTask(Task task) async {
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.poppins(
-            color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
+            color:
+                _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: _isDarkTheme ? ThemeConfig.borderColor : Colors.grey.shade400),
+            borderSide: BorderSide(
+              color:
+                  _isDarkTheme ? ThemeConfig.borderColor : Colors.grey.shade400,
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: _isDarkTheme ? ThemeConfig.borderColor : Colors.grey.shade400),
+            borderSide: BorderSide(
+              color:
+                  _isDarkTheme ? ThemeConfig.borderColor : Colors.grey.shade400,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: ThemeConfig.primaryColor, width: 2),
+            borderSide: const BorderSide(
+              color: ThemeConfig.primaryColor,
+              width: 2,
+            ),
           ),
           filled: true,
-          fillColor: _isDarkTheme ? ThemeConfig.darkCardColor : ThemeConfig.lightCardColor,
+          fillColor:
+              _isDarkTheme
+                  ? ThemeConfig.darkCardColor
+                  : ThemeConfig.lightCardColor,
           errorText: isRequired && !isValid ? 'Required' : null,
-          errorStyle: GoogleFonts.poppins(color: ThemeConfig.secondaryColor, fontSize: 12),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          errorStyle: GoogleFonts.poppins(
+            color: ThemeConfig.secondaryColor,
+            fontSize: 12,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
         style: GoogleFonts.poppins(
           color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
@@ -454,26 +565,49 @@ void _addTask(Task task) async {
             label: Text(
               label,
               style: GoogleFonts.poppins(
-                color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
+                color:
+                    _isDarkTheme
+                        ? ThemeConfig.secondaryTextColor
+                        : Colors.black54,
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
               ),
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: _isDarkTheme ? ThemeConfig.borderColor : Colors.grey.shade400),
+              borderSide: BorderSide(
+                color:
+                    _isDarkTheme
+                        ? ThemeConfig.borderColor
+                        : Colors.grey.shade400,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: _isDarkTheme ? ThemeConfig.borderColor : Colors.grey.shade400),
+              borderSide: BorderSide(
+                color:
+                    _isDarkTheme
+                        ? ThemeConfig.borderColor
+                        : Colors.grey.shade400,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: ThemeConfig.primaryColor, width: 2),
+              borderSide: const BorderSide(
+                color: ThemeConfig.primaryColor,
+                width: 2,
+              ),
             ),
             filled: true,
-            fillColor: fillColor ?? (_isDarkTheme ? ThemeConfig.darkCardColor : ThemeConfig.lightCardColor),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            fillColor:
+                fillColor ??
+                (_isDarkTheme
+                    ? ThemeConfig.darkCardColor
+                    : ThemeConfig.lightCardColor),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
+            ),
             prefixIconConstraints: const BoxConstraints(minWidth: 16),
           ),
           style: GoogleFonts.poppins(
@@ -481,7 +615,8 @@ void _addTask(Task task) async {
             fontSize: 14,
             fontWeight: FontWeight.w400,
           ),
-          dropdownColor: _isDarkTheme ? ThemeConfig.darkCardColor : Colors.white,
+          dropdownColor:
+              _isDarkTheme ? ThemeConfig.darkCardColor : Colors.white,
           items: items,
           onChanged: onChanged,
           isExpanded: true,
@@ -515,21 +650,38 @@ void _addTask(Task task) async {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                        color: _isDarkTheme ? ThemeConfig.borderColor : Colors.grey.shade400),
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.borderColor
+                              : Colors.grey.shade400,
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                        color: _isDarkTheme ? ThemeConfig.borderColor : Colors.grey.shade400),
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.borderColor
+                              : Colors.grey.shade400,
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: ThemeConfig.primaryColor, width: 2),
+                    borderSide: const BorderSide(
+                      color: ThemeConfig.primaryColor,
+                      width: 2,
+                    ),
                   ),
                   filled: true,
-                  fillColor: fillColor ??
-                      (_isDarkTheme ? ThemeConfig.darkCardColor : ThemeConfig.lightCardColor),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                  fillColor:
+                      fillColor ??
+                      (_isDarkTheme
+                          ? ThemeConfig.darkCardColor
+                          : ThemeConfig.lightCardColor),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 12,
+                  ),
                   errorText: state.hasError ? state.errorText : null,
                 ),
                 child: Row(
@@ -545,7 +697,10 @@ void _addTask(Task task) async {
                       child: Text(
                         label,
                         style: GoogleFonts.poppins(
-                          color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
+                          color:
+                              _isDarkTheme
+                                  ? ThemeConfig.primaryTextColor
+                                  : Colors.black87,
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
                         ),
@@ -565,47 +720,48 @@ void _addTask(Task task) async {
   ThemeData _buildDialogTheme() {
     return _isDarkTheme
         ? ThemeData.dark().copyWith(
-            primaryColor: ThemeConfig.primaryColor,
-            scaffoldBackgroundColor: ThemeConfig.darkBackground,
-            cardColor: ThemeConfig.darkCardColor,
-            textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).apply(
-              bodyColor: ThemeConfig.primaryTextColor,
-              displayColor: ThemeConfig.primaryTextColor,
+          primaryColor: ThemeConfig.primaryColor,
+          scaffoldBackgroundColor: ThemeConfig.darkBackground,
+          cardColor: ThemeConfig.darkCardColor,
+          textTheme: GoogleFonts.poppinsTextTheme(
+            ThemeData.dark().textTheme,
+          ).apply(
+            bodyColor: ThemeConfig.primaryTextColor,
+            displayColor: ThemeConfig.primaryTextColor,
+          ),
+          colorScheme: const ColorScheme.dark(
+            primary: ThemeConfig.primaryColor,
+            onPrimary: Colors.white,
+            surface: ThemeConfig.darkCardColor,
+            onSurface: ThemeConfig.primaryTextColor,
+          ),
+          dialogBackgroundColor: ThemeConfig.darkCardColor,
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(
+              foregroundColor: ThemeConfig.primaryColor,
             ),
-            colorScheme: const ColorScheme.dark(
-              primary: ThemeConfig.primaryColor,
-              onPrimary: Colors.white,
-              surface: ThemeConfig.darkCardColor,
-              onSurface: ThemeConfig.primaryTextColor,
-            ),
-            dialogBackgroundColor: ThemeConfig.darkCardColor,
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: ThemeConfig.primaryColor,
-              ),
-            ),
-          )
+          ),
+        )
         : ThemeData.light().copyWith(
-            primaryColor: ThemeConfig.primaryColor,
-            scaffoldBackgroundColor: ThemeConfig.lightBackground,
-            cardColor: ThemeConfig.lightCardColor,
-            textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme).apply(
-              bodyColor: Colors.black87,
-              displayColor: Colors.black87,
+          primaryColor: ThemeConfig.primaryColor,
+          scaffoldBackgroundColor: ThemeConfig.lightBackground,
+          cardColor: ThemeConfig.lightCardColor,
+          textTheme: GoogleFonts.poppinsTextTheme(
+            ThemeData.light().textTheme,
+          ).apply(bodyColor: Colors.black87, displayColor: Colors.black87),
+          colorScheme: const ColorScheme.light(
+            primary: ThemeConfig.primaryColor,
+            onPrimary: Colors.white,
+            surface: Colors.white,
+            onSurface: Colors.black87,
+          ),
+          dialogBackgroundColor: Colors.white,
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(
+              foregroundColor: ThemeConfig.primaryColor,
             ),
-            colorScheme: const ColorScheme.light(
-              primary: ThemeConfig.primaryColor,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black87,
-            ),
-            dialogBackgroundColor: Colors.white,
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: ThemeConfig.primaryColor,
-              ),
-            ),
-          );
+          ),
+        );
   }
 
   /// Builds a dialog with consistent theming and transitions.
@@ -614,14 +770,14 @@ void _addTask(Task task) async {
       data: _buildDialogTheme(),
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: _isDarkTheme ? ThemeConfig.darkCardColor : ThemeConfig.lightCardColor,
+        backgroundColor:
+            _isDarkTheme
+                ? ThemeConfig.darkCardColor
+                : ThemeConfig.lightCardColor,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: FractionallySizedBox(
           widthFactor: 0.9,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: content,
-          ),
+          child: Padding(padding: const EdgeInsets.all(16), child: content),
         ),
       ),
     );
@@ -662,9 +818,11 @@ void _addTask(Task task) async {
     );
   }
 
-
   /// Builds content for the Add Task dialog.
-  Widget _buildAddTaskDialogContent(StateSetter setDialogState, Map<String, dynamic> dialogState) {
+  Widget _buildAddTaskDialogContent(
+    StateSetter setDialogState,
+    Map<String, dynamic> dialogState,
+  ) {
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -675,75 +833,95 @@ void _addTask(Task task) async {
             style: GoogleFonts.poppins(
               fontSize: 22,
               fontWeight: FontWeight.w600,
-              color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
+              color:
+                  _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
             ),
           ),
           const SizedBox(height: 16),
           _buildTextField(
             label: 'Task Title',
-            onChanged: (value) => setDialogState(() {
-              dialogState['title'] = value;
-              debugPrint('Title: $value');
-            }),
+            onChanged:
+                (value) => setDialogState(() {
+                  dialogState['title'] = value;
+                  debugPrint('Title: $value');
+                }),
             maxLength: 50,
             isRequired: true,
-            isValid: dialogState['isValid'] || (dialogState['title'] as String).isNotEmpty,
+            isValid:
+                dialogState['isValid'] ||
+                (dialogState['title'] as String).isNotEmpty,
           ),
           const SizedBox(height: 12),
           _buildTextField(
             label: 'Description',
-            onChanged: (value) => setDialogState(() {
-              dialogState['description'] = value;
-              debugPrint('Description: $value');
-            }),
+            onChanged:
+                (value) => setDialogState(() {
+                  dialogState['description'] = value;
+                  debugPrint('Description: $value');
+                }),
             maxLines: 3,
             isRequired: true,
-            isValid: dialogState['isValid'] || (dialogState['description'] as String).isNotEmpty,
+            isValid:
+                dialogState['isValid'] ||
+                (dialogState['description'] as String).isNotEmpty,
           ),
           const SizedBox(height: 12),
           _buildTextField(
             label: 'Notes',
-            onChanged: (value) => setDialogState(() {
-              dialogState['notes'] = value;
-              debugPrint('Notes: $value');
-            }),
+            onChanged:
+                (value) => setDialogState(() {
+                  dialogState['notes'] = value;
+                  debugPrint('Notes: $value');
+                }),
             maxLines: 3,
           ),
           const SizedBox(height: 12),
           Semantics(
             label: 'Select Due Date and Time',
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 8,
+              ),
               title: Text(
                 dialogState['dueDate'] != null
-                    ? DateFormat.yMd().add_jm().format(dialogState['dueDate'] as DateTime)
+                    ? DateFormat.yMd().add_jm().format(
+                      dialogState['dueDate'] as DateTime,
+                    )
                     : 'Select Due Date & Time',
                 style: GoogleFonts.poppins(
-                  color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
+                  color:
+                      _isDarkTheme
+                          ? ThemeConfig.primaryTextColor
+                          : Colors.black87,
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                 ),
               ),
-              trailing: const Icon(Icons.calendar_today, color: ThemeConfig.primaryColor, size: 24),
+              trailing: const Icon(
+                Icons.calendar_today,
+                color: ThemeConfig.primaryColor,
+                size: 24,
+              ),
               onTap: () async {
                 final selectedDate = await showDatePicker(
                   context: context,
-                  initialDate: tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
+                  initialDate: tz.TZDateTime.now(
+                    tz.getLocation('Asia/Kolkata'),
+                  ),
                   firstDate: tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
                   lastDate: tz.TZDateTime(tz.getLocation('Asia/Kolkata'), 2100),
-                  builder: (context, child) => Theme(
-                    data: _buildDialogTheme(),
-                    child: child!,
-                  ),
+                  builder:
+                      (context, child) =>
+                          Theme(data: _buildDialogTheme(), child: child!),
                 );
                 if (selectedDate != null) {
                   final selectedTime = await showTimePicker(
                     context: context,
                     initialTime: TimeOfDay.now(),
-                    builder: (context, child) => Theme(
-                      data: _buildDialogTheme(),
-                      child: child!,
-                    ),
+                    builder:
+                        (context, child) =>
+                            Theme(data: _buildDialogTheme(), child: child!),
                   );
                   if (selectedTime != null) {
                     final dueDate = tz.TZDateTime(
@@ -754,7 +932,9 @@ void _addTask(Task task) async {
                       selectedTime.hour,
                       selectedTime.minute,
                     );
-                    if (dueDate.isBefore(tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')))) {
+                    if (dueDate.isBefore(
+                      tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
+                    )) {
                       showSnackBar('Due date must be in the future');
                       debugPrint('Invalid dueDate: $dueDate is in the past');
                       return;
@@ -770,6 +950,20 @@ void _addTask(Task task) async {
             ),
           ),
           const SizedBox(height: 12),
+          _buildCheckboxField(
+            label: "Alarm",
+            value: dialogState['alarm'] ?? false,
+            onChanged: (value) {
+              setDialogState(() {
+                dialogState['alarm'] = value ?? false;
+              });
+            },
+            fillColor:
+                (dialogState['alarm'] ?? false)
+                    ? ThemeConfig.primaryColor.withOpacity(0.2)
+                    : null,
+          ),
+          const SizedBox(height: 12),
           _buildDropdown(
             label: 'Priority',
             value: dialogState['priority'],
@@ -777,13 +971,15 @@ void _addTask(Task task) async {
               DropdownMenuItem(value: 'low', child: Text('Low')),
               DropdownMenuItem(value: 'high', child: Text('High')),
             ],
-            onChanged: (value) => setDialogState(() {
-              dialogState['priority'] = value;
-              debugPrint('Priority: $value');
-            }),
-            fillColor: dialogState['priority'] == 'high'
-                ? ThemeConfig.highPriorityColor.withOpacity(0.2)
-                : ThemeConfig.lowPriorityColor.withOpacity(0.2),
+            onChanged:
+                (value) => setDialogState(() {
+                  dialogState['priority'] = value;
+                  debugPrint('Priority: $value');
+                }),
+            fillColor:
+                dialogState['priority'] == 'high'
+                    ? ThemeConfig.highPriorityColor.withOpacity(0.2)
+                    : ThemeConfig.lowPriorityColor.withOpacity(0.2),
           ),
           const SizedBox(height: 12),
           _buildDropdown(
@@ -795,10 +991,11 @@ void _addTask(Task task) async {
               DropdownMenuItem(value: 'Personal', child: Text('Personal')),
               DropdownMenuItem(value: 'Urgent', child: Text('Urgent')),
             ],
-            onChanged: (value) => setDialogState(() {
-              dialogState['category'] = value;
-              debugPrint('Category: $value');
-            }),
+            onChanged:
+                (value) => setDialogState(() {
+                  dialogState['category'] = value;
+                  debugPrint('Category: $value');
+                }),
           ),
           const SizedBox(height: 16),
           Row(
@@ -814,7 +1011,10 @@ void _addTask(Task task) async {
                   child: Text(
                     'Cancel',
                     style: GoogleFonts.poppins(
-                      color: _isDarkTheme ? ThemeConfig.buttonSecondaryColor : Colors.black54,
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.buttonSecondaryColor
+                              : Colors.black54,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -825,11 +1025,14 @@ void _addTask(Task task) async {
                 label: 'Add task',
                 child: ElevatedButton(
                   onPressed: () {
-                    if (dialogState['title'].trim().isEmpty || dialogState['description'].trim().isEmpty) {
+                    if (dialogState['title'].trim().isEmpty ||
+                        dialogState['description'].trim().isEmpty) {
                       setDialogState(() {
                         dialogState['isValid'] = false;
                       });
-                      debugPrint('Validation failed: title or description empty');
+                      debugPrint(
+                        'Validation failed: title or description empty',
+                      );
                       return;
                     }
                     final newTask = Task(
@@ -838,12 +1041,25 @@ void _addTask(Task task) async {
                       description: dialogState['description'],
                       notes: dialogState['notes'],
                       priority: dialogState['priority'],
-                      createdTime: DateFormat('hh:mm a').format(tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'))),
-                      createdDate: tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')).toIso8601String(),
-                      dueDate: dialogState['dueDate'] != null ? (dialogState['dueDate'] as tz.TZDateTime).toUtc().toIso8601String() : null,
+                      createdTime: DateFormat('hh:mm a').format(
+                        tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
+                      ),
+                      createdDate:
+                          tz.TZDateTime.now(
+                            tz.getLocation('Asia/Kolkata'),
+                          ).toIso8601String(),
+                      dueDate:
+                          dialogState['dueDate'] != null
+                              ? (dialogState['dueDate'] as tz.TZDateTime)
+                                  .toUtc()
+                                  .toIso8601String()
+                              : null,
                       category: dialogState['category'],
+                      alarm: dialogState['alarm'],
                     );
-                    debugPrint('Task created: ${newTask.title}, dueDate: ${newTask.dueDate}');
+                    debugPrint(
+                      'Task created: ${newTask.title}, dueDate: ${newTask.dueDate}',
+                    );
                     _addTask(newTask);
                     Navigator.pop(context);
                     debugPrint('Task added: ${newTask.title}');
@@ -851,10 +1067,18 @@ void _addTask(Task task) async {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ThemeConfig.primaryColor,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
-                  child: Text('Add', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+                  child: Text(
+                    'Add',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                  ),
                 ),
               ),
             ],
@@ -874,8 +1098,15 @@ void _addTask(Task task) async {
       'notes': task.notes,
       'priority': task.priority,
       'category': task.category,
-      'dueDate': task.dueDate != null ? tz.TZDateTime.from(DateTime.parse(task.dueDate!), tz.getLocation('Asia/Kolkata')) : null as tz.TZDateTime?,
+      'dueDate':
+          task.dueDate != null
+              ? tz.TZDateTime.from(
+                DateTime.parse(task.dueDate!),
+                tz.getLocation('Asia/Kolkata'),
+              )
+              : null as tz.TZDateTime?,
       'isValid': true,
+      'alarm': task.alarm ?? false,
     };
     showGeneralDialog(
       context: context,
@@ -901,7 +1132,10 @@ void _addTask(Task task) async {
   }
 
   /// Builds content for the Edit Task dialog.
-  Widget _buildEditTaskDialogContent(StateSetter setDialogState, Map<String, dynamic> dialogState) {
+  Widget _buildEditTaskDialogContent(
+    StateSetter setDialogState,
+    Map<String, dynamic> dialogState,
+  ) {
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -912,80 +1146,103 @@ void _addTask(Task task) async {
             style: GoogleFonts.poppins(
               fontSize: 22,
               fontWeight: FontWeight.w600,
-              color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
+              color:
+                  _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
             ),
           ),
           const SizedBox(height: 16),
           _buildTextField(
             label: 'Task Title',
             initialValue: dialogState['title'],
-            onChanged: (value) => setDialogState(() {
-              dialogState['title'] = value;
-              debugPrint('Title: $value');
-            }),
+            onChanged:
+                (value) => setDialogState(() {
+                  dialogState['title'] = value;
+                  debugPrint('Title: $value');
+                }),
             maxLength: 50,
             isRequired: true,
-            isValid: dialogState['isValid'] || (dialogState['title'] as String).isNotEmpty,
+            isValid:
+                dialogState['isValid'] ||
+                (dialogState['title'] as String).isNotEmpty,
           ),
           const SizedBox(height: 12),
           _buildTextField(
             label: 'Description',
             initialValue: dialogState['description'],
-            onChanged: (value) => setDialogState(() {
-              dialogState['description'] = value;
-              debugPrint('Description: $value');
-            }),
+            onChanged:
+                (value) => setDialogState(() {
+                  dialogState['description'] = value;
+                  debugPrint('Description: $value');
+                }),
             maxLines: 3,
             isRequired: true,
-            isValid: dialogState['isValid'] || (dialogState['description'] as String).isNotEmpty,
+            isValid:
+                dialogState['isValid'] ||
+                (dialogState['description'] as String).isNotEmpty,
           ),
           const SizedBox(height: 12),
           _buildTextField(
             label: 'Notes',
             initialValue: dialogState['notes'],
-            onChanged: (value) => setDialogState(() {
-              dialogState['notes'] = value;
-              debugPrint('Notes: $value');
-            }),
+            onChanged:
+                (value) => setDialogState(() {
+                  dialogState['notes'] = value;
+                  debugPrint('Notes: $value');
+                }),
             maxLines: 3,
           ),
           const SizedBox(height: 12),
           Semantics(
             label: 'Select Due Date and Time',
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 8,
+              ),
               title: Text(
                 dialogState['dueDate'] != null
-                    ? DateFormat.yMd().add_jm().format(dialogState['dueDate'] as DateTime)
+                    ? DateFormat.yMd().add_jm().format(
+                      dialogState['dueDate'] as DateTime,
+                    )
                     : 'Select Due Date & Time',
                 style: GoogleFonts.poppins(
-                  color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
+                  color:
+                      _isDarkTheme
+                          ? ThemeConfig.primaryTextColor
+                          : Colors.black87,
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                 ),
               ),
-              trailing: const Icon(Icons.calendar_today, color: ThemeConfig.primaryColor, size: 24),
+              trailing: const Icon(
+                Icons.calendar_today,
+                color: ThemeConfig.primaryColor,
+                size: 24,
+              ),
               onTap: () async {
                 final selectedDate = await showDatePicker(
                   context: context,
-                  initialDate: dialogState['dueDate'] ?? tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
+                  initialDate:
+                      dialogState['dueDate'] ??
+                      tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
                   firstDate: tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
                   lastDate: tz.TZDateTime(tz.getLocation('Asia/Kolkata'), 2100),
-                  builder: (context, child) => Theme(
-                    data: _buildDialogTheme(),
-                    child: child!,
-                  ),
+                  builder:
+                      (context, child) =>
+                          Theme(data: _buildDialogTheme(), child: child!),
                 );
                 if (selectedDate != null) {
                   final selectedTime = await showTimePicker(
                     context: context,
-                    initialTime: dialogState['dueDate'] != null
-                        ? TimeOfDay.fromDateTime(dialogState['dueDate'] as DateTime)
-                        : TimeOfDay.now(),
-                    builder: (context, child) => Theme(
-                      data: _buildDialogTheme(),
-                      child: child!,
-                    ),
+                    initialTime:
+                        dialogState['dueDate'] != null
+                            ? TimeOfDay.fromDateTime(
+                              dialogState['dueDate'] as DateTime,
+                            )
+                            : TimeOfDay.now(),
+                    builder:
+                        (context, child) =>
+                            Theme(data: _buildDialogTheme(), child: child!),
                   );
                   if (selectedTime != null) {
                     final dueDate = tz.TZDateTime(
@@ -996,7 +1253,9 @@ void _addTask(Task task) async {
                       selectedTime.hour,
                       selectedTime.minute,
                     );
-                    if (dueDate.isBefore(tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')))) {
+                    if (dueDate.isBefore(
+                      tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
+                    )) {
                       showSnackBar('Due date must be in the future');
                       debugPrint('Invalid dueDate: $dueDate is in the past');
                       return;
@@ -1012,6 +1271,20 @@ void _addTask(Task task) async {
             ),
           ),
           const SizedBox(height: 12),
+          _buildCheckboxField(
+            label: "Alarm",
+            value: dialogState['alarm'] ?? false,
+            onChanged: (value) {
+              setDialogState(() {
+                dialogState['alarm'] = value ?? false;
+              });
+            },
+            fillColor:
+                (dialogState['alarm'] ?? false)
+                    ? ThemeConfig.primaryColor.withOpacity(0.2)
+                    : null,
+          ),
+          const SizedBox(height: 12),
           _buildDropdown(
             label: 'Priority',
             value: dialogState['priority'],
@@ -1019,13 +1292,15 @@ void _addTask(Task task) async {
               DropdownMenuItem(value: 'low', child: Text('Low')),
               DropdownMenuItem(value: 'high', child: Text('High')),
             ],
-            onChanged: (value) => setDialogState(() {
-              dialogState['priority'] = value;
-              debugPrint('Priority: $value');
-            }),
-            fillColor: dialogState['priority'] == 'high'
-                ? ThemeConfig.highPriorityColor.withOpacity(0.2)
-                : ThemeConfig.lowPriorityColor.withOpacity(0.2),
+            onChanged:
+                (value) => setDialogState(() {
+                  dialogState['priority'] = value;
+                  debugPrint('Priority: $value');
+                }),
+            fillColor:
+                dialogState['priority'] == 'high'
+                    ? ThemeConfig.highPriorityColor.withOpacity(0.2)
+                    : ThemeConfig.lowPriorityColor.withOpacity(0.2),
           ),
           const SizedBox(height: 12),
           _buildDropdown(
@@ -1037,10 +1312,11 @@ void _addTask(Task task) async {
               DropdownMenuItem(value: 'Personal', child: Text('Personal')),
               DropdownMenuItem(value: 'Urgent', child: Text('Urgent')),
             ],
-            onChanged: (value) => setDialogState(() {
-              dialogState['category'] = value;
-              debugPrint('Category: $value');
-            }),
+            onChanged:
+                (value) => setDialogState(() {
+                  dialogState['category'] = value;
+                  debugPrint('Category: $value');
+                }),
           ),
           const SizedBox(height: 16),
           Row(
@@ -1056,7 +1332,10 @@ void _addTask(Task task) async {
                   child: Text(
                     'Cancel',
                     style: GoogleFonts.poppins(
-                      color: _isDarkTheme ? ThemeConfig.buttonSecondaryColor : Colors.black54,
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.buttonSecondaryColor
+                              : Colors.black54,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1067,11 +1346,14 @@ void _addTask(Task task) async {
                 label: 'Save task',
                 child: ElevatedButton(
                   onPressed: () {
-                    if (dialogState['title'].trim().isEmpty || dialogState['description'].trim().isEmpty) {
+                    if (dialogState['title'].trim().isEmpty ||
+                        dialogState['description'].trim().isEmpty) {
                       setDialogState(() {
                         dialogState['isValid'] = false;
                       });
-                      debugPrint('Validation failed: title or description empty');
+                      debugPrint(
+                        'Validation failed: title or description empty',
+                      );
                       return;
                     }
                     final updatedTask = Task(
@@ -1083,10 +1365,18 @@ void _addTask(Task task) async {
                       priority: dialogState['priority'],
                       createdTime: _tasks[dialogState['index']].createdTime,
                       createdDate: _tasks[dialogState['index']].createdDate,
-                      dueDate: dialogState['dueDate'] != null ? (dialogState['dueDate'] as tz.TZDateTime).toUtc().toIso8601String() : null,
+                      dueDate:
+                          dialogState['dueDate'] != null
+                              ? (dialogState['dueDate'] as tz.TZDateTime)
+                                  .toUtc()
+                                  .toIso8601String()
+                              : null,
                       category: dialogState['category'],
+                      alarm: dialogState['alarm'],
                     );
-                    debugPrint('Task updated: ${updatedTask.title}, dueDate: ${updatedTask.dueDate}');
+                    debugPrint(
+                      'Task updated: ${updatedTask.title}, dueDate: ${updatedTask.dueDate}',
+                    );
                     _editTask(dialogState['index'], updatedTask);
                     Navigator.pop(context);
                     debugPrint('Task saved: ${updatedTask.title}');
@@ -1094,10 +1384,18 @@ void _addTask(Task task) async {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ThemeConfig.primaryColor,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
-                  child: Text('Save', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+                  child: Text(
+                    'Save',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                  ),
                 ),
               ),
             ],
@@ -1111,7 +1409,10 @@ void _addTask(Task task) async {
   Widget _buildTaskDetailsContent(int index) {
     final task = _tasks[index];
     final dueDate = task.dueDate != null ? DateTime.parse(task.dueDate!) : null;
-    final dueDateIst = dueDate != null ? tz.TZDateTime.from(dueDate, tz.getLocation('Asia/Kolkata')) : null;
+    final dueDateIst =
+        dueDate != null
+            ? tz.TZDateTime.from(dueDate, tz.getLocation('Asia/Kolkata'))
+            : null;
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1122,7 +1423,8 @@ void _addTask(Task task) async {
             style: GoogleFonts.poppins(
               fontSize: 22,
               fontWeight: FontWeight.w600,
-              color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
+              color:
+                  _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
             ),
           ),
           const SizedBox(height: 16),
@@ -1130,7 +1432,8 @@ void _addTask(Task task) async {
             'Task: ${task.title}',
             style: GoogleFonts.poppins(
               fontSize: 16,
-              color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
+              color:
+                  _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1139,7 +1442,10 @@ void _addTask(Task task) async {
             'Description: ${task.description ?? 'None'}',
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
+              color:
+                  _isDarkTheme
+                      ? ThemeConfig.secondaryTextColor
+                      : Colors.black54,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -1148,7 +1454,10 @@ void _addTask(Task task) async {
             'Notes: ${task.notes != null && task.notes!.isNotEmpty ? task.notes : 'None'}',
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
+              color:
+                  _isDarkTheme
+                      ? ThemeConfig.secondaryTextColor
+                      : Colors.black54,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -1157,7 +1466,10 @@ void _addTask(Task task) async {
             'Priority: ${task.priority?.capitalize() ?? 'None'}',
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: task.priority == 'high' ? ThemeConfig.highPriorityColor : ThemeConfig.lowPriorityColor,
+              color:
+                  task.priority == 'high'
+                      ? ThemeConfig.highPriorityColor
+                      : ThemeConfig.lowPriorityColor,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1166,7 +1478,10 @@ void _addTask(Task task) async {
             'Due Date: ${dueDateIst != null ? DateFormat.yMMMMd().add_jm().format(dueDateIst) : 'N/A'}',
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
+              color:
+                  _isDarkTheme
+                      ? ThemeConfig.secondaryTextColor
+                      : Colors.black54,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -1175,7 +1490,10 @@ void _addTask(Task task) async {
             'Category: ${task.category ?? 'None'}',
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
+              color:
+                  _isDarkTheme
+                      ? ThemeConfig.secondaryTextColor
+                      : Colors.black54,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -1184,7 +1502,10 @@ void _addTask(Task task) async {
             'Created: ${task.createdTime}',
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
+              color:
+                  _isDarkTheme
+                      ? ThemeConfig.secondaryTextColor
+                      : Colors.black54,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -1204,7 +1525,10 @@ void _addTask(Task task) async {
                   child: Text(
                     'Edit',
                     style: GoogleFonts.poppins(
-                      color: _isDarkTheme ? ThemeConfig.buttonSecondaryColor : Colors.black54,
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.buttonSecondaryColor
+                              : Colors.black54,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1237,7 +1561,10 @@ void _addTask(Task task) async {
                   child: Text(
                     'Share',
                     style: GoogleFonts.poppins(
-                      color: _isDarkTheme ? ThemeConfig.buttonSecondaryColor : Colors.black54,
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.buttonSecondaryColor
+                              : Colors.black54,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1253,10 +1580,18 @@ void _addTask(Task task) async {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ThemeConfig.primaryColor,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
-                  child: Text('Close', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+                  child: Text(
+                    'Close',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                  ),
                 ),
               ),
             ],
@@ -1289,8 +1624,16 @@ void _addTask(Task task) async {
   Widget _buildTaskCard(int index) {
     final task = filteredTasks[index];
     final dueDate = task.dueDate != null ? DateTime.parse(task.dueDate!) : null;
-    final dueDateIst = dueDate != null ? tz.TZDateTime.from(dueDate, tz.getLocation('Asia/Kolkata')) : null;
-    final isOverdue = dueDateIst != null && dueDateIst.isBefore(tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'))) && !task.isComplete;
+    final dueDateIst =
+        dueDate != null
+            ? tz.TZDateTime.from(dueDate, tz.getLocation('Asia/Kolkata'))
+            : null;
+    final isOverdue =
+        dueDateIst != null &&
+        dueDateIst.isBefore(
+          tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
+        ) &&
+        !task.isComplete;
     return Dismissible(
       key: ValueKey(task.id),
       background: Container(
@@ -1343,55 +1686,70 @@ void _addTask(Task task) async {
         }
         return await showDialog(
           context: context,
-          builder: (context) => Theme(
-            data: _buildDialogTheme(),
-            child: AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              backgroundColor: _isDarkTheme ? ThemeConfig.darkCardColor : ThemeConfig.lightCardColor,
-              title: Text(
-                'Confirm Delete',
-                style: GoogleFonts.poppins(
-                  color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              content: Text(
-                'Are you sure you want to delete "${task.title}"?',
-                style: GoogleFonts.poppins(
-                  color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              actions: [
-                Semantics(
-                  label: 'Cancel deletion',
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text(
-                      'Cancel',
-                      style: GoogleFonts.poppins(
-                        color: _isDarkTheme ? ThemeConfig.buttonSecondaryColor : Colors.black54,
-                        fontWeight: FontWeight.w500,
-                      ),
+          builder:
+              (context) => Theme(
+                data: _buildDialogTheme(),
+                child: AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  backgroundColor:
+                      _isDarkTheme
+                          ? ThemeConfig.darkCardColor
+                          : ThemeConfig.lightCardColor,
+                  title: Text(
+                    'Confirm Delete',
+                    style: GoogleFonts.poppins(
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.primaryTextColor
+                              : Colors.black87,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-                Semantics(
-                  label: 'Confirm deletion',
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: Text(
-                      'Delete',
-                      style: GoogleFonts.poppins(
-                        color: ThemeConfig.secondaryColor,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  content: Text(
+                    'Are you sure you want to delete "${task.title}"?',
+                    style: GoogleFonts.poppins(
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.secondaryTextColor
+                              : Colors.black54,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
+                  actions: [
+                    Semantics(
+                      label: 'Cancel deletion',
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.poppins(
+                            color:
+                                _isDarkTheme
+                                    ? ThemeConfig.buttonSecondaryColor
+                                    : Colors.black54,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Semantics(
+                      label: 'Confirm deletion',
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text(
+                          'Delete',
+                          style: GoogleFonts.poppins(
+                            color: ThemeConfig.secondaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
         );
       },
       child: Card(
@@ -1399,20 +1757,33 @@ void _addTask(Task task) async {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: isOverdue
-              ? const BorderSide(color: ThemeConfig.secondaryColor, width: 2)
-              : BorderSide(color: _isDarkTheme ? ThemeConfig.borderColor : Colors.transparent),
+          side:
+              isOverdue
+                  ? const BorderSide(
+                    color: ThemeConfig.secondaryColor,
+                    width: 2,
+                  )
+                  : BorderSide(
+                    color:
+                        _isDarkTheme
+                            ? ThemeConfig.borderColor
+                            : Colors.transparent,
+                  ),
         ),
         elevation: 4,
-        color: task.priority == 'high'
-            ? ThemeConfig.highPriorityColor.withOpacity(0.2)
-            : _isDarkTheme
+        color:
+            task.priority == 'high'
+                ? ThemeConfig.highPriorityColor.withOpacity(0.2)
+                : _isDarkTheme
                 ? ThemeConfig.darkCardColor
                 : ThemeConfig.lightCardColor,
         child: Semantics(
           label: 'Task ${task.title}',
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
             leading: Checkbox(
               value: task.isComplete,
               onChanged: (value) {
@@ -1423,13 +1794,18 @@ void _addTask(Task task) async {
                 }
               },
               activeColor: ThemeConfig.primaryColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
             title: Text(
               task.title,
               style: GoogleFonts.poppins(
                 fontSize: 18,
-                color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
+                color:
+                    _isDarkTheme
+                        ? ThemeConfig.primaryTextColor
+                        : Colors.black87,
                 fontWeight: FontWeight.w600,
                 decoration: task.isComplete ? TextDecoration.lineThrough : null,
               ),
@@ -1443,7 +1819,10 @@ void _addTask(Task task) async {
                   task.description ?? '',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
-                    color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
+                    color:
+                        _isDarkTheme
+                            ? ThemeConfig.secondaryTextColor
+                            : Colors.black54,
                     fontWeight: FontWeight.w400,
                   ),
                   maxLines: 1,
@@ -1454,7 +1833,12 @@ void _addTask(Task task) async {
                     'Due: ${DateFormat.yMMMMd().add_jm().format(dueDateIst)}',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
-                      color: isOverdue ? ThemeConfig.secondaryColor : (_isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54),
+                      color:
+                          isOverdue
+                              ? ThemeConfig.secondaryColor
+                              : (_isDarkTheme
+                                  ? ThemeConfig.secondaryTextColor
+                                  : Colors.black54),
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -1463,14 +1847,20 @@ void _addTask(Task task) async {
                     'Category: ${task.category}',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
-                      color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.secondaryTextColor
+                              : Colors.black54,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
               ],
             ),
             trailing: IconButton(
-              icon: const Icon(Icons.info_outline, color: ThemeConfig.primaryColor),
+              icon: const Icon(
+                Icons.info_outline,
+                color: ThemeConfig.primaryColor,
+              ),
               tooltip: 'View task details',
               onPressed: () {
                 final taskIndex = _tasks.indexWhere((t) => t.id == task.id);
@@ -1497,61 +1887,73 @@ void _addTask(Task task) async {
   Widget build(BuildContext context) {
     debugPrint('Building HomeScreen, tasks=${_tasks.length}');
     return Theme(
-      data: _isDarkTheme
-          ? ThemeData.dark().copyWith(
-              primaryColor: ThemeConfig.primaryColor,
-              scaffoldBackgroundColor: ThemeConfig.darkBackground,
-              textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).apply(
-                bodyColor: ThemeConfig.primaryTextColor,
-                displayColor: ThemeConfig.primaryTextColor,
-              ),
-              cardColor: ThemeConfig.darkCardColor,
-              appBarTheme: const AppBarTheme(
-                backgroundColor: ThemeConfig.primaryColor,
-                elevation: 0,
-                titleTextStyle: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+      data:
+          _isDarkTheme
+              ? ThemeData.dark().copyWith(
+                primaryColor: ThemeConfig.primaryColor,
+                scaffoldBackgroundColor: ThemeConfig.darkBackground,
+                textTheme: GoogleFonts.poppinsTextTheme(
+                  ThemeData.dark().textTheme,
+                ).apply(
+                  bodyColor: ThemeConfig.primaryTextColor,
+                  displayColor: ThemeConfig.primaryTextColor,
                 ),
-                iconTheme: IconThemeData(color: Colors.white),
-              ),
-              elevatedButtonTheme: ElevatedButtonThemeData(
-                style: ElevatedButton.styleFrom(
+                cardColor: ThemeConfig.darkCardColor,
+                appBarTheme: const AppBarTheme(
                   backgroundColor: ThemeConfig.primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                  titleTextStyle: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  iconTheme: IconThemeData(color: Colors.white),
                 ),
-              ),
-            )
-          : ThemeData.light().copyWith(
-              primaryColor: ThemeConfig.primaryColor,
-              scaffoldBackgroundColor: ThemeConfig.lightBackground,
-              textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme).apply(
-                bodyColor: Colors.black87,
-                displayColor: Colors.black87,
-              ),
-              cardColor: ThemeConfig.lightCardColor,
-              appBarTheme: const AppBarTheme(
-                backgroundColor: ThemeConfig.primaryColor,
-                elevation: 0,
-                titleTextStyle: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                elevatedButtonTheme: ElevatedButtonThemeData(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ThemeConfig.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
-                iconTheme: IconThemeData(color: Colors.white),
-              ),
-              elevatedButtonTheme: ElevatedButtonThemeData(
-                style: ElevatedButton.styleFrom(
+              )
+              : ThemeData.light().copyWith(
+                primaryColor: ThemeConfig.primaryColor,
+                scaffoldBackgroundColor: ThemeConfig.lightBackground,
+                textTheme: GoogleFonts.poppinsTextTheme(
+                  ThemeData.light().textTheme,
+                ).apply(
+                  bodyColor: Colors.black87,
+                  displayColor: Colors.black87,
+                ),
+                cardColor: ThemeConfig.lightCardColor,
+                appBarTheme: const AppBarTheme(
                   backgroundColor: ThemeConfig.primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                  titleTextStyle: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  iconTheme: IconThemeData(color: Colors.white),
+                ),
+                elevatedButtonTheme: ElevatedButtonThemeData(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ThemeConfig.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ),
-            ),
       child: Scaffold(
-        backgroundColor: _isDarkTheme ? ThemeConfig.darkBackground : ThemeConfig.lightBackground,
+        backgroundColor:
+            _isDarkTheme
+                ? ThemeConfig.darkBackground
+                : ThemeConfig.lightBackground,
         appBar: AppBar(
           backgroundColor: ThemeConfig.primaryColor,
           elevation: 0,
@@ -1618,7 +2020,9 @@ void _addTask(Task task) async {
                     _isDarkTheme = !_isDarkTheme;
                     debugPrint('Theme: ${_isDarkTheme ? 'Dark' : 'Light'}');
                   });
-                  showSnackBar('Theme changed to ${_isDarkTheme ? 'Dark' : 'Light'}');
+                  showSnackBar(
+                    'Theme changed to ${_isDarkTheme ? 'Dark' : 'Light'}',
+                  );
                   _saveTasks();
                 },
               ),
@@ -1631,7 +2035,7 @@ void _addTask(Task task) async {
                 onPressed: () {
                   showSnackBar('Open device settings');
                   debugPrint('Settings opened');
-                }
+                },
               ),
             ),
           ],
@@ -1652,10 +2056,22 @@ void _addTask(Task task) async {
                             label: 'Completion',
                             value: _filterCompletion,
                             items: const [
-                              DropdownMenuItem(value: 'All', child: Text('All')),
-                              DropdownMenuItem(value: 'Completed', child: Text('Completed')),
-                              DropdownMenuItem(value: 'Pending', child: Text('Pending')),
-                              DropdownMenuItem(value: 'Overdue', child: Text('Overdue')),
+                              DropdownMenuItem(
+                                value: 'All',
+                                child: Text('All'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Completed',
+                                child: Text('Completed'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Pending',
+                                child: Text('Pending'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Overdue',
+                                child: Text('Overdue'),
+                              ),
                             ],
                             onChanged: (value) {
                               setState(() {
@@ -1673,9 +2089,18 @@ void _addTask(Task task) async {
                             label: 'Priority',
                             value: _filterPriority,
                             items: const [
-                              DropdownMenuItem(value: 'All', child: Text('All')),
-                              DropdownMenuItem(value: 'high', child: Text('High')),
-                              DropdownMenuItem(value: 'low', child: Text('Low')),
+                              DropdownMenuItem(
+                                value: 'All',
+                                child: Text('All'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'high',
+                                child: Text('High'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'low',
+                                child: Text('Low'),
+                              ),
                             ],
                             onChanged: (value) {
                               setState(() {
@@ -1693,10 +2118,22 @@ void _addTask(Task task) async {
                             label: 'Category',
                             value: _filterCategory,
                             items: const [
-                              DropdownMenuItem(value: 'All', child: Text('All')),
-                              DropdownMenuItem(value: 'Work', child: Text('Work')),
-                              DropdownMenuItem(value: 'Personal', child: Text('Personal')),
-                              DropdownMenuItem(value: 'Urgent', child: Text('Urgent')),
+                              DropdownMenuItem(
+                                value: 'All',
+                                child: Text('All'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Work',
+                                child: Text('Work'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Personal',
+                                child: Text('Personal'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Urgent',
+                                child: Text('Urgent'),
+                              ),
                             ],
                             onChanged: (value) {
                               setState(() {
@@ -1729,64 +2166,82 @@ void _addTask(Task task) async {
                   ),
                 ),
                 Expanded(
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator(color: ThemeConfig.primaryColor))
-                      : filteredTasks.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    _tasks.isEmpty ? 'Yet to Add Tasks' : 'No tasks found',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      color: _isDarkTheme ? ThemeConfig.secondaryTextColor : Colors.black54,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  // const SizedBox(height: 16),
-                                  // Semantics(
-                                  //   label: 'Test notification',
-                                  //   child: ElevatedButton(
-                                  //     onPressed: () async {
-                                  //       await _notificationService.showTestNotification();
-                                  //       showSnackBar('Test notification sent');
-                                  //       debugPrint('Test notification triggered');
-                                  //     },
-                                  //     style: ElevatedButton.styleFrom(
-                                  //       backgroundColor: ThemeConfig.primaryColor,
-                                  //       foregroundColor: Colors.white,
-                                  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  //     ),
-                                  //     child: Text('Test Notification', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
-                                  //   ),
-                                  // ),
-                                ],
-                              ),
-                            )
-                          : ReorderableListView.builder(
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: filteredTasks.length,
-                              itemBuilder: (context, index) => _buildTaskCard(index),
-                              onReorder: (oldIndex, newIndex) async {
-                                setState(() {
-                                  if (newIndex > oldIndex) newIndex--;
-                                  final task = filteredTasks.removeAt(oldIndex);
-                                  filteredTasks.insert(newIndex, task);
-                                  final reorderedTasks = <Task>[];
-                                  final filteredIds = filteredTasks.map((t) => t.id).toList();
-                                  reorderedTasks.addAll(filteredTasks);
-                                  reorderedTasks.addAll(_tasks.where((t) => !filteredIds.contains(t.id)));
-                                  _tasks = reorderedTasks;
-                                  _cachedFilteredTasks = null;
-                                  debugPrint('Reordered task: ${task.title} from $oldIndex to $newIndex');
-                                });
-                                await _saveTasks();
-                                if (await Vibration.hasVibrator() ?? false) {
-                                  Vibration.vibrate(duration: 100);
-                                }
-                              },
+                  child:
+                      _isLoading
+                          ? const Center(
+                            child: CircularProgressIndicator(
+                              color: ThemeConfig.primaryColor,
                             ),
+                          )
+                          : filteredTasks.isEmpty
+                          ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _tasks.isEmpty
+                                      ? 'Yet to Add Tasks'
+                                      : 'No tasks found',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    color:
+                                        _isDarkTheme
+                                            ? ThemeConfig.secondaryTextColor
+                                            : Colors.black54,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                // const SizedBox(height: 16),
+                                // Semantics(
+                                //   label: 'Test notification',
+                                //   child: ElevatedButton(
+                                //     onPressed: () async {
+                                //       await _notificationService.showTestNotification();
+                                //       showSnackBar('Test notification sent');
+                                //       debugPrint('Test notification triggered');
+                                //     },
+                                //     style: ElevatedButton.styleFrom(
+                                //       backgroundColor: ThemeConfig.primaryColor,
+                                //       foregroundColor: Colors.white,
+                                //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                //     ),
+                                //     child: Text('Test Notification', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+                                //   ),
+                                // ),
+                              ],
+                            ),
+                          )
+                          : ReorderableListView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: filteredTasks.length,
+                            itemBuilder:
+                                (context, index) => _buildTaskCard(index),
+                            onReorder: (oldIndex, newIndex) async {
+                              setState(() {
+                                if (newIndex > oldIndex) newIndex--;
+                                final task = filteredTasks.removeAt(oldIndex);
+                                filteredTasks.insert(newIndex, task);
+                                final reorderedTasks = <Task>[];
+                                final filteredIds =
+                                    filteredTasks.map((t) => t.id).toList();
+                                reorderedTasks.addAll(filteredTasks);
+                                reorderedTasks.addAll(
+                                  _tasks.where(
+                                    (t) => !filteredIds.contains(t.id),
+                                  ),
+                                );
+                                _tasks = reorderedTasks;
+                                _cachedFilteredTasks = null;
+                                debugPrint(
+                                  'Reordered task: ${task.title} from $oldIndex to $newIndex',
+                                );
+                              });
+                              await _saveTasks();
+                              if (await Vibration.hasVibrator() ?? false) {
+                                Vibration.vibrate(duration: 100);
+                              }
+                            },
+                          ),
                 ),
               ],
             ),
@@ -1800,17 +2255,17 @@ void _addTask(Task task) async {
                     _lottieController
                       ..duration = composition.duration
                       ..forward().whenComplete(() {
-                          if (mounted) {
-                            setState(() {
-                              _showCelebration = false;
-                              debugPrint('Celebration animation completed');
-                            });
-                          }
-                        });
+                        if (mounted) {
+                          setState(() {
+                            _showCelebration = false;
+                            debugPrint('Celebration animation completed');
+                          });
+                        }
+                      });
                   },
                   errorBuilder: (context, error, stackTrace) {
                     debugPrint('Failed to load confetti.json: $error');
-                  debugPrint('Failed to show celebration animation');
+                    debugPrint('Failed to show celebration animation');
                     return const SizedBox();
                   },
                 ),
@@ -1826,7 +2281,7 @@ void _addTask(Task task) async {
             child: const Icon(Icons.add, size: 30, color: Colors.white),
           ),
         ),
-      )
+      ),
     );
   }
 }
