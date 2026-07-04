@@ -490,6 +490,77 @@ void _addTask(Task task) async {
     );
   }
 
+  Widget _buildCheckboxField({
+    required String label,
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+    Color? fillColor,
+  }) {
+    return Semantics(
+      label: 'Toggle $label',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: FormField<bool>(
+          initialValue: value,
+          builder: (FormFieldState<bool> state) {
+            return InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                final newValue = !(state.value ?? false);
+                state.didChange(newValue);
+                onChanged(newValue);
+              },
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                        color: _isDarkTheme ? ThemeConfig.borderColor : Colors.grey.shade400),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                        color: _isDarkTheme ? ThemeConfig.borderColor : Colors.grey.shade400),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: ThemeConfig.primaryColor, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: fillColor ??
+                      (_isDarkTheme ? ThemeConfig.darkCardColor : ThemeConfig.lightCardColor),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                  errorText: state.hasError ? state.errorText : null,
+                ),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: state.value,
+                      onChanged: (bool? newValue) {
+                        state.didChange(newValue);
+                        onChanged(newValue);
+                      },
+                    ),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: GoogleFonts.poppins(
+                          color: _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   /// Creates a consistent ThemeData for dialogs.
   ThemeData _buildDialogTheme() {
     return _isDarkTheme
