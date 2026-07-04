@@ -780,7 +780,7 @@ class _HomeScreenState extends State<HomeScreen>
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: FractionallySizedBox(
           widthFactor: 0.9,
-          child: Padding(padding: const EdgeInsets.all(16), child: content),
+          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16), child: content),
         ),
       ),
     );
@@ -828,6 +828,7 @@ class _HomeScreenState extends State<HomeScreen>
     Map<String, dynamic> dialogState,
   ) {
     return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1141,6 +1142,7 @@ class _HomeScreenState extends State<HomeScreen>
     Map<String, dynamic> dialogState,
   ) {
     return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1418,6 +1420,7 @@ class _HomeScreenState extends State<HomeScreen>
             ? tz.TZDateTime.from(dueDate, tz.getLocation('Asia/Kolkata'))
             : null;
     return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
