@@ -1429,22 +1429,22 @@ class _HomeScreenState extends State<HomeScreen>
             'Task Details',
             style: GoogleFonts.poppins(
               fontSize: 22,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color:
                   _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             'Task: ${task.title}',
             style: GoogleFonts.poppins(
               fontSize: 16,
               color:
                   _isDarkTheme ? ThemeConfig.primaryTextColor : Colors.black87,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Description: ${task.description ?? 'None'}',
             style: GoogleFonts.poppins(
@@ -1453,10 +1453,10 @@ class _HomeScreenState extends State<HomeScreen>
                   _isDarkTheme
                       ? ThemeConfig.secondaryTextColor
                       : Colors.black54,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Notes: ${task.notes != null && task.notes!.isNotEmpty ? task.notes : 'None'}',
             style: GoogleFonts.poppins(
@@ -1465,10 +1465,10 @@ class _HomeScreenState extends State<HomeScreen>
                   _isDarkTheme
                       ? ThemeConfig.secondaryTextColor
                       : Colors.black54,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Priority: ${task.priority?.capitalize() ?? 'None'}',
             style: GoogleFonts.poppins(
@@ -1480,7 +1480,7 @@ class _HomeScreenState extends State<HomeScreen>
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Due Date: ${dueDateIst != null ? DateFormat.yMMMMd().add_jm().format(dueDateIst) : 'N/A'}',
             style: GoogleFonts.poppins(
@@ -1489,10 +1489,10 @@ class _HomeScreenState extends State<HomeScreen>
                   _isDarkTheme
                       ? ThemeConfig.secondaryTextColor
                       : Colors.black54,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Category: ${task.category ?? 'None'}',
             style: GoogleFonts.poppins(
@@ -1501,10 +1501,10 @@ class _HomeScreenState extends State<HomeScreen>
                   _isDarkTheme
                       ? ThemeConfig.secondaryTextColor
                       : Colors.black54,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Created: ${task.createdTime}',
             style: GoogleFonts.poppins(
@@ -1513,7 +1513,7 @@ class _HomeScreenState extends State<HomeScreen>
                   _isDarkTheme
                       ? ThemeConfig.secondaryTextColor
                       : Colors.black54,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 16),
