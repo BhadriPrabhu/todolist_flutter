@@ -1921,19 +1921,37 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
               ],
             ),
-            trailing: IconButton(
-              icon: const Icon(
-                Icons.info_outline,
-                color: ThemeConfig.primaryColor,
-              ),
-              tooltip: 'View task details',
-              onPressed: () {
-                final taskIndex = _tasks.indexWhere((t) => t.id == task.id);
-                if (taskIndex != -1) {
-                  _showTaskDetails(taskIndex);
-                  debugPrint('Details: ${task.title}');
-                }
-              },
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(
+                    Icons.info_outline,
+                    color: ThemeConfig.primaryColor,
+                  ),
+                  tooltip: 'View task details',
+                  onPressed: () {
+                    final taskIndex = _tasks.indexWhere((t) => t.id == task.id);
+                    if (taskIndex != -1) {
+                      _showTaskDetails(taskIndex);
+                      debugPrint('Details: ${task.title}');
+                    }
+                  },
+                ),
+                ReorderableDragStartListener(
+                  index: index,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4.0, right: 4.0),
+                    child: Icon(
+                      Icons.drag_handle,
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.secondaryTextColor
+                              : Colors.black54,
+                    ),
+                  ),
+                ),
+              ],
             ),
             onTap: () {
               final taskIndex = _tasks.indexWhere((t) => t.id == task.id);
@@ -2283,6 +2301,7 @@ class _HomeScreenState extends State<HomeScreen>
                           : _sortBy == 'Custom'
                           ? ReorderableListView.builder(
                             physics: const BouncingScrollPhysics(),
+                            buildDefaultDragHandles: false,
                             itemCount: filteredTasks.length,
                             itemBuilder:
                                 (context, index) => _buildTaskCard(index),
