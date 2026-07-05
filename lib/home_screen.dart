@@ -638,82 +638,77 @@ class _HomeScreenState extends State<HomeScreen>
       label: 'Toggle $label',
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
-        child: FormField<bool>(
-          initialValue: value,
-          builder: (FormFieldState<bool> state) {
-            return InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                final newValue = !(state.value ?? false);
-                state.didChange(newValue);
-                onChanged(newValue);
-              },
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color:
-                          _isDarkTheme
-                              ? ThemeConfig.borderColor
-                              : Colors.grey.shade400,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color:
-                          _isDarkTheme
-                              ? ThemeConfig.borderColor
-                              : Colors.grey.shade400,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: ThemeConfig.primaryColor,
-                      width: 2,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor:
-                      fillColor ??
-                      (_isDarkTheme
-                          ? ThemeConfig.darkCardColor
-                          : ThemeConfig.lightCardColor),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 12,
-                  ),
-                  errorText: state.hasError ? state.errorText : null,
-                ),
-                child: Row(
-                  children: [
-                    Checkbox(
-                      value: state.value,
-                      onChanged: (bool? newValue) {
-                        state.didChange(newValue);
-                        onChanged(newValue);
-                      },
-                    ),
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: GoogleFonts.poppins(
-                          color:
-                              _isDarkTheme
-                                  ? ThemeConfig.primaryTextColor
-                                  : Colors.black87,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  ],
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            // Pass the inverted parent value up.
+            // The UI won't change unless the parent explicitly updates its state.
+            onChanged(!value);
+          },
+          child: InputDecorator(
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color:
+                      _isDarkTheme
+                          ? ThemeConfig.borderColor
+                          : Colors.grey.shade400,
                 ),
               ),
-            );
-          },
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color:
+                      _isDarkTheme
+                          ? ThemeConfig.borderColor
+                          : Colors.grey.shade400,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: ThemeConfig.primaryColor,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor:
+                  fillColor ??
+                  (_isDarkTheme
+                      ? ThemeConfig.darkCardColor
+                      : ThemeConfig.lightCardColor),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 12,
+              ),
+              // Removed state.hasError since FormField is gone.
+              // If you need error validation here, pass an errorText String parameter to the widget.
+            ),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: value, // Uses the parent's value
+                  onChanged: (bool? newValue) {
+                    onChanged(newValue);
+                  },
+                ),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.poppins(
+                      color:
+                          _isDarkTheme
+                              ? ThemeConfig.primaryTextColor
+                              : Colors.black87,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -780,7 +775,10 @@ class _HomeScreenState extends State<HomeScreen>
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: FractionallySizedBox(
           widthFactor: 0.9,
-          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16), child: content),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
+            child: content,
+          ),
         ),
       ),
     );
@@ -957,17 +955,41 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: 12),
           _buildCheckboxField(
             label: "Alarm",
-            value: dialogState['alarm'] ?? false,
+            value:
+                dialogState["dueDate"] != null
+                    ? dialogState['alarm'] ?? false
+                    : false,
             onChanged: (value) {
-              setDialogState(() {
-                dialogState['alarm'] = value ?? false;
-              });
+              if (dialogState["dueDate"] == null && value == true) {
+                showSnackBar('Please select a due date first');
+                debugPrint('Cannot enable alarm without due date');
+                return;
+              } else {
+                setDialogState(() {
+                  dialogState['alarm'] = value ?? false;
+                });
+              }
             },
             fillColor:
-                (dialogState['alarm'] ?? false)
-                    ? ThemeConfig.primaryColor.withOpacity(0.2)
-                    : null,
+                dialogState["dueDate"] != null
+                    ? (dialogState['alarm'] ?? false)
+                        ? ThemeConfig.primaryColor.withOpacity(0.2)
+                        : null
+                    : ThemeConfig.secondaryColor.withOpacity(0.2),
           ),
+          dialogState["dueDate"] == null
+              ? Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Set a due date to enable alarm',
+                  style: GoogleFonts.poppins(
+                    color: const Color.fromARGB(255, 229, 18, 68),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )
+              : const SizedBox.shrink(),
           const SizedBox(height: 12),
           _buildDropdown(
             label: 'Priority',
@@ -1279,17 +1301,41 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: 12),
           _buildCheckboxField(
             label: "Alarm",
-            value: dialogState['alarm'] ?? false,
+            value:
+                dialogState['dueDate'] != null
+                    ? dialogState['alarm'] ?? false
+                    : false,
             onChanged: (value) {
-              setDialogState(() {
-                dialogState['alarm'] = value ?? false;
-              });
+              if (dialogState["dueDate"] == null && value == true) {
+                showSnackBar('Please select a due date first');
+                debugPrint('Cannot enable alarm without due date');
+                return;
+              } else {
+                setDialogState(() {
+                  dialogState['alarm'] = value ?? false;
+                });
+              }
             },
             fillColor:
-                (dialogState['alarm'] ?? false)
-                    ? ThemeConfig.primaryColor.withOpacity(0.2)
-                    : null,
+                dialogState["dueDate"] != null
+                    ? (dialogState['alarm'] ?? false)
+                        ? ThemeConfig.primaryColor.withOpacity(0.2)
+                        : null
+                    : ThemeConfig.secondaryColor.withOpacity(0.2),
           ),
+          dialogState["dueDate"] == null
+              ? Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Set a due date to enable alarm',
+                  style: GoogleFonts.poppins(
+                    color: const Color.fromARGB(255, 229, 18, 68),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )
+              : const SizedBox.shrink(),
           const SizedBox(height: 12),
           _buildDropdown(
             label: 'Priority',
