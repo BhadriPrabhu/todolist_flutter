@@ -1938,7 +1938,7 @@ class _HomeScreenState extends State<HomeScreen>
                     }
                   },
                 ),
-                ReorderableDragStartListener(
+                _sortBy == "Custom" ? ReorderableDragStartListener(
                   index: index,
                   child: Padding(
                     padding: const EdgeInsets.only(left: 4.0, right: 4.0),
@@ -1950,7 +1950,7 @@ class _HomeScreenState extends State<HomeScreen>
                               : Colors.black54,
                     ),
                   ),
-                ),
+                ) : const SizedBox.shrink(),
               ],
             ),
             onTap: () {
