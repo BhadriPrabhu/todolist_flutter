@@ -968,10 +968,8 @@ class _HomeScreenState extends State<HomeScreen>
                   dialogState['highlightWarning'] = true;
                 });
 
-                // 2. Wait for 300 milliseconds
                 await Future.delayed(const Duration(milliseconds: 300));
 
-                // 3. Revert back to normal state
                 setDialogState(() {
                   dialogState['highlightWarning'] = false;
                 });
@@ -1326,10 +1324,21 @@ class _HomeScreenState extends State<HomeScreen>
                 dialogState['dueDate'] != null
                     ? dialogState['alarm'] ?? false
                     : false,
-            onChanged: (value) {
+            onChanged: (value) async {
               if (dialogState["dueDate"] == null && value == true) {
                 showSnackBar('Please select a due date first');
                 debugPrint('Cannot enable alarm without due date');
+
+                setDialogState(() {
+                  dialogState['highlightWarning'] = true;
+                });
+
+                await Future.delayed(const Duration(milliseconds: 300));
+
+                setDialogState(() {
+                  dialogState['highlightWarning'] = false;
+                });
+
                 return;
               } else {
                 setDialogState(() {
@@ -1347,13 +1356,22 @@ class _HomeScreenState extends State<HomeScreen>
           dialogState["dueDate"] == null
               ? Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'Set a due date to enable alarm',
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
                   style: GoogleFonts.poppins(
-                    color: const Color.fromARGB(255, 229, 18, 68),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    color:
+                        (dialogState['highlightWarning'] ?? false)
+                            ? Colors.redAccent
+                            : const Color.fromARGB(255, 229, 18, 68),
+                    fontSize:
+                        (dialogState['highlightWarning'] ?? false) ? 14 : 12,
+                    fontWeight:
+                        (dialogState['highlightWarning'] ?? false)
+                            ? FontWeight.bold
+                            : FontWeight.w500,
                   ),
+                  child: const Text('Set a due date to enable alarm'),
                 ),
               )
               : const SizedBox.shrink(),
