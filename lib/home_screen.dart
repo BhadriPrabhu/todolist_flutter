@@ -2096,20 +2096,21 @@ class _HomeScreenState extends State<HomeScreen>
                 borderRadius: BorderRadius.circular(12),
                 child: Image.asset(
                   'assets/image/logo.png',
-                  height: 40,
-                  width: 40,
+                  height: 35,
+                  width: 35,
                   errorBuilder: (context, error, stackTrace) {
                     debugPrint('Failed to load logo.png: $error');
                     return const Icon(Icons.error, color: Colors.white);
                   },
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Text(
                 'To-Do List',
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
+                  fontSize: 18,
                 ),
               ),
             ],
@@ -2140,7 +2141,7 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               focusColor: Colors.transparent,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 2),
             Semantics(
               label: 'Toggle theme',
               child: IconButton(
