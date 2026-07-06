@@ -491,14 +491,10 @@ class _HomeScreenState extends State<HomeScreen>
     bool isRequired = false,
     bool isValid = true,
   }) {
-    final controller =
-        initialValue != null ? TextEditingController(text: initialValue) : null;
-    if (controller != null) {
-      _controllers.add(controller);
-    }
     return Semantics(
       label: 'Enter $label',
-      child: TextField(
+      child: TextFormField( // Use TextFormField instead of TextField
+        initialValue: initialValue, // Let the widget natively manage the state
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.poppins(
@@ -550,7 +546,6 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         maxLines: maxLines,
         maxLength: maxLength,
-        controller: controller,
         onChanged: onChanged,
       ),
     );
@@ -1273,12 +1268,16 @@ class _HomeScreenState extends State<HomeScreen>
                 size: 24,
               ),
               onTap: () async {
+                final now = tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'));
+                final initialDate = dialogState['dueDate'] ?? now;
+                
+                // Fix: Ensure firstDate is not AFTER initialDate to prevent crashes on overdue tasks
+                final firstDate = initialDate.isBefore(now) ? initialDate : now;
+
                 final selectedDate = await showDatePicker(
                   context: context,
-                  initialDate:
-                      dialogState['dueDate'] ??
-                      tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
-                  firstDate: tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
+                  initialDate: initialDate,
+                  firstDate: firstDate,
                   lastDate: tz.TZDateTime(tz.getLocation('Asia/Kolkata'), 2100),
                   builder:
                       (context, child) =>
@@ -1306,13 +1305,13 @@ class _HomeScreenState extends State<HomeScreen>
                       selectedTime.hour,
                       selectedTime.minute,
                     );
-                    if (dueDate.isBefore(
-                      tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')),
-                    )) {
+                    
+                    if (dueDate.isBefore(now)) {
                       showSnackBar('Due date must be in the future');
                       debugPrint('Invalid dueDate: $dueDate is in the past');
                       return;
                     }
+                    
                     setDialogState(() {
                       dialogState['dueDate'] = dueDate;
                     });
