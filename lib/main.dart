@@ -4,11 +4,36 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'splash_screen.dart';
 import 'notification_service.dart';
 
+import 'alarm_screen.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+@pragma("vm:entry-point")
+Future<void> onActionReceivedMethod(ReceivedAction receivedAction) async {
+  if (receivedAction.payload != null && receivedAction.payload!['isAlarm'] == 'true') {
+    final taskId = receivedAction.payload!['taskId'] ?? '';
+    final taskTitle = receivedAction.payload!['taskTitle'] ?? 'Task';
+
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (context) => AlarmScreen(
+          taskId: taskId,
+          taskTitle: taskTitle,
+        ),
+      ),
+    );
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
   final notificationService = NotificationService();
   await notificationService.initialize();
+  AwesomeNotifications().setListeners(
+    onActionReceivedMethod: onActionReceivedMethod,
+  );
   runApp(const ToDoListApp());
 }
 
@@ -19,6 +44,7 @@ class ToDoListApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'To Do List',
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         brightness: Brightness.light,

@@ -215,12 +215,15 @@ class _HomeScreenState extends State<HomeScreen>
       );
       await Future.wait([
         _saveTasks(),
-        _notificationService.scheduleNotification(task).catchError((e) {
-          debugPrint(
-            '[2025-05-30 02:10 IST] Failed to schedule notification for task ID: ${task.id}, error: $e',
-          );
-          throw e;
-        }),
+        task.alarm == true
+            ? _notificationService.scheduleAlarm(task).catchError((e) {
+              debugPrint('Failed to schedule alarm: $e');
+              throw e;
+            })
+            : _notificationService.scheduleNotification(task).catchError((e) {
+              debugPrint('Failed to schedule notification: $e');
+              throw e;
+            }),
       ]);
       showSnackBar('Task "${task.title}" added');
       if (await Vibration.hasVibrator() ?? false) {
@@ -248,12 +251,15 @@ class _HomeScreenState extends State<HomeScreen>
       );
       await Future.wait([
         _saveTasks(),
-        _notificationService.scheduleNotification(task).catchError((e) {
-          debugPrint(
-            '[2025-05-30 02:13 IST] Failed to schedule notification for task ID: ${task.id}, error: $e',
-          );
-          throw e;
-        }),
+        task.alarm == true
+            ? _notificationService.scheduleAlarm(task).catchError((e) {
+              debugPrint('Failed to schedule alarm: $e');
+              throw e;
+            })
+            : _notificationService.scheduleNotification(task).catchError((e) {
+              debugPrint('Failed to schedule notification: $e');
+              throw e;
+            }),
       ]);
       showSnackBar('Task "${task.title}" updated');
       if (await Vibration.hasVibrator() ?? false) {

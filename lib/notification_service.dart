@@ -39,6 +39,17 @@ class NotificationService {
             enableVibration: true,
             channelShowBadge: true,
           ),
+          NotificationChannel(
+            channelKey: 'task_alarm_channel',
+            channelName: 'Task Alarms',
+            channelDescription: 'Full screen alarms for tasks',
+            importance: NotificationImportance.Max,
+            playSound: true,
+            enableVibration: true,
+            criticalAlerts: true,
+            locked: true,
+            defaultRingtoneType: DefaultRingtoneType.Alarm,
+          ),
         ],
         debug: true,
       );
@@ -146,6 +157,46 @@ class NotificationService {
       final errorMessage = '[2025-05-30 01:48 IST] Failed to schedule notification for task ${task.id}: $e';
       debugPrint(errorMessage);
       await _writeLog(errorMessage);
+    }
+  }
+
+  // ADD THIS NEW METHOD
+  Future<void> scheduleAlarm(Task task) async {
+    if (task.dueDate == null) return;
+
+    try {
+      final dueDateUtc = DateTime.parse(task.dueDate!);
+      final dueDateIst = tz.TZDateTime.from(dueDateUtc, tz.getLocation('Asia/Kolkata'));
+      final now = tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'));
+
+      if (!dueDateIst.isAfter(now)) return;
+
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: task.id.hashCode,
+          channelKey: 'task_alarm_channel', // Must match the new channel
+          title: 'ALARM: ${task.title}',
+          body: task.description ?? 'Task is due now!',
+          category: NotificationCategory.Alarm, // This tells Android it's an alarm
+          fullScreenIntent: true, // Wakes the screen and launches the app
+          wakeUpScreen: true,
+          // Payload is critical: we will use this to navigate to the AlarmScreen
+          payload: {
+            'taskId': task.id,
+            'taskTitle': task.title,
+            'isAlarm': 'true'
+          },
+        ),
+        schedule: NotificationCalendar.fromDate(
+          date: dueDateIst,
+          preciseAlarm: true,
+          allowWhileIdle: true,
+        ),
+      );
+
+      debugPrint('[2025-05-30] Scheduled ALARM for task ${task.id}');
+    } catch (e) {
+      debugPrint('[2025-05-30] Failed to schedule alarm: $e');
     }
   }
 
