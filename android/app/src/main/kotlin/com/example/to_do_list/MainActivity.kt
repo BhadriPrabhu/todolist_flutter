@@ -9,6 +9,10 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
+import android.util.Log
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.todo/speech"
     private var speechRecognizer: SpeechRecognizer? = null
@@ -17,10 +21,13 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            if (call.method == "startListening") {
-                startOfflineSpeechRecognition(result)
-            } else {
-                result.notImplemented()
+            when (call.method) {
+                "startListening" -> {
+                    startOfflineSpeechRecognition(result)
+                }
+                else -> {
+                    result.notImplemented()
+                }
             }
         }
     }

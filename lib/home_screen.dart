@@ -1,5 +1,5 @@
 import 'dart:async';
-// import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
@@ -189,17 +189,75 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _handleVoiceTask() async {
+    final speechService = NativeSpeechService();
+    showSnackBar('Listening...');
+    
+    final spokenText = await speechService.startListening();
+    
+    if (spokenText != null) {
+      showSnackBar('Thinking...');
+      
+      final aiJsonResult = await speechService.parseTaskWithAI(spokenText);
+      
+      if (aiJsonResult != null) {
+         try {
+           // 1. Sanitize the output (Gemini sometimes adds markdown blocks)
+           final cleanJson = aiJsonResult.replaceAll('```json', '').replaceAll('```', '').trim();
+           
+           // 2. Decode JSON to Dart Map
+           final Map<String, dynamic> data = jsonDecode(cleanJson);
+           
+           // 3. Build the Task Object
+           final newTask = Task(
+             id: const Uuid().v4(),
+             title: data['title'] ?? 'Voice Task',
+             description: data['description'],
+             notes: data['notes'],
+             priority: data['priority'] ?? 'low',
+             createdTime: DateFormat('hh:mm a').format(tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'))),
+             createdDate: tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')).toIso8601String(),
+             dueDate: null, // Voice dates require separate parsing, leaving null for now
+             category: data['category'],
+             alarm: false,
+           );
+
+           // 4. Save and update UI
+           _addTask(newTask);
+           
+         } catch (e) {
+           debugPrint('Failed to parse AI JSON: $e');
+           showSnackBar('Failed to read AI response.');
+         }
+      } else {
+         showSnackBar('AI parsing failed completely.');
+      }
+    } else {
+      showSnackBar('Speech recognition failed.');
+    }
+  }
+
   void _testMicrophone() async {
     final speechService = NativeSpeechService();
     showSnackBar('Listening...');
     
-    final result = await speechService.startListening();
+    // 1. Capture the voice
+    final spokenText = await speechService.startListening();
     
-    if (result != null) {
-      debugPrint('SUCCESS: Recognized text -> $result');
-      showSnackBar('Heard: $result');
+    if (spokenText != null) {
+      debugPrint('Heard: $spokenText');
+      showSnackBar('Parsing: $spokenText');
+      
+      // 2. Feed it to the AI
+      final aiJsonResult = await speechService.parseTaskWithAI(spokenText);
+      
+      if (aiJsonResult != null) {
+         debugPrint('AI PARSED RESULT: $aiJsonResult');
+         showSnackBar('AI Success! Check console.');
+      } else {
+         showSnackBar('AI parsing failed.');
+      }
     } else {
-      debugPrint('FAILED: No text recognized or error occurred.');
       showSnackBar('Speech recognition failed.');
     }
   }
@@ -2445,7 +2503,7 @@ class _HomeScreenState extends State<HomeScreen>
         floatingActionButton: Semantics(
           label: 'Add new task',
           child: FloatingActionButton(
-            onPressed: _testMicrophone,
+            onPressed: _handleVoiceTask,
             backgroundColor: ThemeConfig.primaryColor,
             tooltip: 'Add new task',
             child: const Icon(Icons.add, size: 30, color: Colors.white),

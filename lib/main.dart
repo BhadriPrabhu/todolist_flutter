@@ -6,6 +6,7 @@ import 'notification_service.dart';
 
 import 'alarm_screen.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -28,6 +29,7 @@ Future<void> onActionReceivedMethod(ReceivedAction receivedAction) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   tz.initializeTimeZones();
   final notificationService = NotificationService();
   await notificationService.initialize();
