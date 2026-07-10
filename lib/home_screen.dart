@@ -2507,14 +2507,36 @@ class _HomeScreenState extends State<HomeScreen>
               ),
           ],
         ),
-        floatingActionButton: Semantics(
-          label: 'Add new task',
-          child: FloatingActionButton(
-            onPressed: _handleVoiceTask,
-            backgroundColor: ThemeConfig.primaryColor,
-            tooltip: 'Add new task',
-            child: const Icon(Icons.add, size: 30, color: Colors.white),
-          ),
+        floatingActionButton: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // Button 1: AI Voice Assistant
+            Semantics(
+              label: 'Add task via voice',
+              child: FloatingActionButton(
+                heroTag: 'ai_voice_btn', // Unique tag prevents crash
+                onPressed: _handleVoiceTask,
+                backgroundColor: ThemeConfig.secondaryColor, // Giving it a different color (Red) makes it stand out
+                tooltip: 'Add task via voice',
+                child: const Icon(Icons.mic, size: 28, color: Colors.white),
+              ),
+            ),
+            
+            const SizedBox(height: 16), // Spacing between the two buttons
+            
+            // Button 2: Manual Add Task
+            Semantics(
+              label: 'Add new task manually',
+              child: FloatingActionButton(
+                heroTag: 'manual_add_btn', // Unique tag prevents crash
+                onPressed: _showAddTaskDialog,
+                backgroundColor: ThemeConfig.primaryColor,
+                tooltip: 'Add new task manually',
+                child: const Icon(Icons.add, size: 30, color: Colors.white),
+              ),
+            ),
+          ],
         ),
       ),
     );
