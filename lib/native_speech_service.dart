@@ -29,10 +29,13 @@ class NativeSpeechService {
 
   Future<String?> parseTaskWithAI(String text) async {
     try {
-      debugPrint('Sending text to Gemini Cloud API for parsing...');
+      debugPrint('Sending text to Gemini Cloud API...');
       
+      // Get the exact current time to give the AI a frame of reference
+      final String currentTime = DateTime.now().toIso8601String();
+
       final model = GenerativeModel(
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         apiKey: _apiKey,
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
@@ -40,23 +43,27 @@ class NativeSpeechService {
         systemInstruction: Content.system('''
           You are a task extraction assistant. Extract the task details from the following text and return a valid JSON object.
           
+          CRITICAL CONTEXT: The current date and time right now is $currentTime. 
+          Use this exact time to calculate absolute dates for relative terms spoken by the user (like "tomorrow", "in 2 hours", "at 5 PM", etc).
+          
           Output schema:
           {
             "title": "Main task name (max 50 chars)",
             "description": "More context or details",
             "notes": "Any extra conditions or items mentioned",
             "category": "Work, Personal, Urgent, or null",
-            "priority": "high or low"
+            "priority": "high or low",
+            "dueDate": "A strict ISO-8601 formatted date string (e.g., 2025-05-30T17:00:00Z) or null if no time is mentioned",
+            "alarm": true if a specific time was mentioned, otherwise false
           }
         '''),
       );
 
       final response = await model.generateContent([Content.text(text)]);
-      
       return response.text;
     } catch (e) {
-      debugPrint("Failed to parse task with Cloud AI: '$e'");
-      return null;
+      debugPrint("Cloud AI failed (Limit/Network). Using offline fallback. Error: '$e'");
+      return _offlineFallbackParse(text);
     }
   }
 

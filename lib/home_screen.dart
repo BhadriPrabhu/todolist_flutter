@@ -202,13 +202,20 @@ class _HomeScreenState extends State<HomeScreen>
       
       if (aiJsonResult != null) {
          try {
-           // 1. Sanitize the output (Gemini sometimes adds markdown blocks)
            final cleanJson = aiJsonResult.replaceAll('```json', '').replaceAll('```', '').trim();
-           
-           // 2. Decode JSON to Dart Map
            final Map<String, dynamic> data = jsonDecode(cleanJson);
            
-           // 3. Build the Task Object
+           // Parse the AI's date string into your timezone
+           tz.TZDateTime? parsedDueDate;
+           if (data['dueDate'] != null) {
+             try {
+                final parsedUtc = DateTime.parse(data['dueDate']).toUtc();
+                parsedDueDate = tz.TZDateTime.from(parsedUtc, tz.getLocation('Asia/Kolkata'));
+             } catch(e) {
+                debugPrint("Date parse error: $e");
+             }
+           }
+           
            final newTask = Task(
              id: const Uuid().v4(),
              title: data['title'] ?? 'Voice Task',
@@ -217,12 +224,12 @@ class _HomeScreenState extends State<HomeScreen>
              priority: data['priority'] ?? 'low',
              createdTime: DateFormat('hh:mm a').format(tz.TZDateTime.now(tz.getLocation('Asia/Kolkata'))),
              createdDate: tz.TZDateTime.now(tz.getLocation('Asia/Kolkata')).toIso8601String(),
-             dueDate: null, // Voice dates require separate parsing, leaving null for now
+             // Save it exactly as your manual Add Task dialog does:
+             dueDate: parsedDueDate?.toUtc().toIso8601String(),
              category: data['category'],
-             alarm: false,
+             alarm: data['alarm'] ?? false,
            );
 
-           // 4. Save and update UI
            _addTask(newTask);
            
          } catch (e) {
@@ -236,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen>
       showSnackBar('Speech recognition failed.');
     }
   }
-
+  
   void _testMicrophone() async {
     final speechService = NativeSpeechService();
     showSnackBar('Listening...');
