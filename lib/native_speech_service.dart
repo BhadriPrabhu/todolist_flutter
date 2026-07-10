@@ -59,4 +59,25 @@ class NativeSpeechService {
       return null;
     }
   }
+
+  String _offlineFallbackParse(String rawText) {
+    // Truncate title to 50 chars to match your schema
+    String safeTitle = rawText.length > 50 ? '${rawText.substring(0, 47)}...' : rawText;
+    
+    // Check for basic keywords to guess priority/category offline
+    String priority = rawText.toLowerCase().contains('urgent') ? 'high' : 'low';
+    String? category;
+    if (rawText.toLowerCase().contains('work')) category = 'Work';
+    if (rawText.toLowerCase().contains('buy') || rawText.toLowerCase().contains('groceries')) category = 'Personal';
+
+    return '''
+    {
+      "title": "$safeTitle",
+      "description": "Created via voice offline.",
+      "notes": "Original text: $rawText",
+      "category": ${category != null ? '"$category"' : "null"},
+      "priority": "$priority"
+    }
+    ''';
+  }
 }
