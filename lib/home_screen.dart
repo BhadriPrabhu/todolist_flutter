@@ -13,6 +13,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'task_model.dart';
 import 'notification_service.dart';
 
+import 'native_speech_service.dart';
+
 extension StringExtension on String {
   String capitalize() {
     return isEmpty ? this : this[0].toUpperCase() + substring(1).toLowerCase();
@@ -184,6 +186,21 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (e) {
       debugPrint('[2025-05-30 01:22 IST] Error saving tasks: $e');
       showSnackBar('Failed to save tasks');
+    }
+  }
+
+  void _testMicrophone() async {
+    final speechService = NativeSpeechService();
+    showSnackBar('Listening...');
+    
+    final result = await speechService.startListening();
+    
+    if (result != null) {
+      debugPrint('SUCCESS: Recognized text -> $result');
+      showSnackBar('Heard: $result');
+    } else {
+      debugPrint('FAILED: No text recognized or error occurred.');
+      showSnackBar('Speech recognition failed.');
     }
   }
 
@@ -2428,7 +2445,7 @@ class _HomeScreenState extends State<HomeScreen>
         floatingActionButton: Semantics(
           label: 'Add new task',
           child: FloatingActionButton(
-            onPressed: _showAddTaskDialog,
+            onPressed: _testMicrophone,
             backgroundColor: ThemeConfig.primaryColor,
             tooltip: 'Add new task',
             child: const Icon(Icons.add, size: 30, color: Colors.white),
