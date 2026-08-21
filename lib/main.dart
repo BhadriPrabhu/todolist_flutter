@@ -12,6 +12,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 @pragma("vm:entry-point")
 Future<void> onActionReceivedMethod(ReceivedAction receivedAction) async {
+  await AwesomeNotifications().resetGlobalBadge();
   if (receivedAction.payload != null && receivedAction.payload!['isAlarm'] == 'true') {
     final taskId = receivedAction.payload!['taskId'] ?? '';
     final taskTitle = receivedAction.payload!['taskTitle'] ?? 'Task';
@@ -33,6 +34,9 @@ void main() async {
   tz.initializeTimeZones();
   final notificationService = NotificationService();
   await notificationService.initialize();
+
+  await AwesomeNotifications().resetGlobalBadge();
+
   AwesomeNotifications().setListeners(
     onActionReceivedMethod: onActionReceivedMethod,
   );
