@@ -31,7 +31,7 @@ class NotificationService {
         null, // Default icon
         [
           NotificationChannel(
-            channelKey: 'task_reminder_channel',
+            channelKey: 'task_reminder_channel_v2',
             channelName: 'Task Reminders',
             channelDescription: 'Notifications for task due dates',
             importance: NotificationImportance.High,
@@ -136,7 +136,7 @@ class NotificationService {
       await AwesomeNotifications().createNotification(
         content: NotificationContent(
           id: task.id.hashCode,
-          channelKey: 'task_reminder_channel',
+          channelKey: 'task_reminder_channel_v2',
           title: task.title,
           body: task.description ?? 'No description',
           notificationLayout: NotificationLayout.Default,
@@ -205,7 +205,7 @@ class NotificationService {
       await AwesomeNotifications().createNotification(
         content: NotificationContent(
           id: task.id.hashCode,
-          channelKey: 'task_reminder_channel',
+          channelKey: 'task_reminder_channel_v2',
           title: 'Overdue: ${task.title}',
           body: task.description ?? 'This task is overdue!',
           notificationLayout: NotificationLayout.Default,
@@ -242,7 +242,7 @@ class NotificationService {
       await AwesomeNotifications().createNotification(
         content: NotificationContent(
           id: 0,
-          channelKey: 'task_reminder_channel',
+          channelKey: 'task_reminder_channel_v2',
           title: 'Test Notification',
           body: 'This is a test',
           notificationLayout: NotificationLayout.Default,

@@ -28,6 +28,11 @@ Future<void> onActionReceivedMethod(ReceivedAction receivedAction) async {
   }
 }
 
+@pragma("vm:entry-point")
+Future<void> onDismissActionReceivedMethod(ReceivedAction receivedAction) async {
+  await AwesomeNotifications().decrementGlobalBadgeCounter();
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -39,6 +44,7 @@ void main() async {
 
   AwesomeNotifications().setListeners(
     onActionReceivedMethod: onActionReceivedMethod,
+    onDismissActionReceivedMethod: onDismissActionReceivedMethod,
   );
   runApp(const ToDoListApp());
 }
